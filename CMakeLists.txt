@@ -27,3 +27,14 @@ add_custom_command(TARGET alien POST_BUILD
     ${alien_lua} $<TARGET_FILE_DIR:alien>
     )
 
+
+set(alientest_lua ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_alien.lua)
+add_library(alientest SHARED tests/alientest.c)
+if (NOT WIN32)
+target_link_libraries(alientest m)
+endif()
+add_custom_command(TARGET alientest POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${alientest_lua} $<TARGET_FILE_DIR:alientest>
+    )
+
