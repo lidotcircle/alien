@@ -47,6 +47,11 @@
  #error "ptrdiff_t size not supported"
 #endif
 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#define __EXPORT __declspec(dllexport)
+#else
+#define __EXPORT
+#endif
 
 /* Lua 5.1 compatibility for Lua 5.2 */
 #define LUA_COMPAT_ALL
@@ -344,7 +349,7 @@ static void *alien_loadfunc (lua_State *L, void *lib, const char *sym) {
 #define FFI_STDCALL FFI_DEFAULT_ABI
 #endif
 
-#if defined(X86_64)
+#if defined(__x86_64__) || defined(_M_X64)
 #define FFI_SYSV FFI_DEFAULT_ABI
 #endif
 
@@ -781,9 +786,9 @@ static int alien_function_call(lua_State *L) {
   case AT_float: ffi_call(cif, af->fn, &fret, args); lua_pushnumber(L, fret); break;
   case AT_double: ffi_call(cif, af->fn, &dret, args); lua_pushnumber(L, dret); break;
   case AT_string: ffi_call(cif, af->fn, &pret, args);
-    (pret ? lua_pushstring(L, (const char *)pret) : lua_pushnil(L)); break;
+    pret = lua_pushstring(L, (const char *)pret); lua_pushnil(L); break;
   case AT_pointer: ffi_call(cif, af->fn, &pret, args);
-    (pret ? lua_pushlightuserdata(L, pret) : lua_pushnil(L)); break;
+    lua_pushlightuserdata(L, pret); lua_pushnil(L); break;
   default:
     return luaL_error(L, "alien: unknown return type (function %s)", af->name ?
                       af->name : "anonymous");
@@ -1216,7 +1221,7 @@ static const luaL_Reg alienlib[] = {
   {NULL, NULL},
 };
 
-LUA_API int luaopen_alien_c(lua_State *L) {
+__EXPORT int luaopen_alien_c(lua_State *L) {
   alien_Library *al;
 
   #ifdef WINDOWS

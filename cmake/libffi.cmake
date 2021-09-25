@@ -1,6 +1,24 @@
 
 if(WIN32)
-    if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+    if (NOT TARGET libffi)
+        if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+            set(ARCH_PATH "x64")
+        else()
+            set(ARCH_PATH "x86")
+        endif()
+
+        add_library(libffi INTERFACE)
+        target_include_directories(libffi INTERFACE "${CMAKE_CURRENT_LIST_DIR}/libffi/${ARCH_PATH}/include")
+        target_link_libraries(libffi INTERFACE "${CMAKE_CURRENT_LIST_DIR}/libffi/${ARCH_PATH}/libffi.lib")
+        set(libffiDLL "${CMAKE_CURRENT_LIST_DIR}/libffi/${ARCH_PATH}/libffi.dll")
+
+        function(link_libffi target)
+            target_link_libraries(${target} PRIVATE libffi)
+            add_custom_command(TARGET ${target} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${libffiDLL} $<TARGET_FILE_DIR:${target}>
+                )
+        endfunction()
     endif()
 else()
     find_library(LIBFFI_LIBRARY
