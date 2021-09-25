@@ -25,13 +25,7 @@
 # include <stdint.h>
 #endif
 
-#if HAVE_FFI_H
-#  include <ffi.h>
-#elif HAVE_FFI_FFI_H
-#  include <ffi/ffi.h>
-#else
-#  error "cannot find ffi.h"
-#endif
+#include <ffi.h>
 
 /* libffi extension to support size_t and ptrdiff_t */
 #if PTRDIFF_MAX == 65535
@@ -348,6 +342,10 @@ static void *alien_loadfunc (lua_State *L, void *lib, const char *sym) {
 
 #if !defined(WINDOWS) || defined(_WIN64)
 #define FFI_STDCALL FFI_DEFAULT_ABI
+#endif
+
+#if defined(X86_64)
+#define FFI_SYSV FFI_DEFAULT_ABI
 #endif
 
 #ifdef __APPLE__
@@ -1218,7 +1216,7 @@ static const luaL_Reg alienlib[] = {
   {NULL, NULL},
 };
 
-int luaopen_alien_c(lua_State *L) {
+LUA_API int luaopen_alien_c(lua_State *L) {
   alien_Library *al;
 
   #ifdef WINDOWS
