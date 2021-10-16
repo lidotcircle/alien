@@ -11,11 +11,12 @@ struct function_list {
     size_t n;
 };
 
-#if defined(WINDOWS)
-#include <winnt.h>
+#if defined(_WIN32) || defined(_WIN64)
+#include <Windows.h>
 
-function_list* lf_load(const void* lib)
+function_list* lf_load(const void* vlib)
 {
+    HMODULE lib = (HMODULE)vlib;
     assert(((PIMAGE_DOS_HEADER)lib)->e_magic == IMAGE_DOS_SIGNATURE);
     PIMAGE_NT_HEADERS header = (PIMAGE_NT_HEADERS)((BYTE *)lib + ((PIMAGE_DOS_HEADER)lib)->e_lfanew);
     assert(header->Signature == IMAGE_NT_SIGNATURE);

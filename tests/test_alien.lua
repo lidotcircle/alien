@@ -2,6 +2,10 @@ alien = require("alien")
 
 local dll = alien.load("alientest")
 print(alien.funclist(dll));
+local m = alien.funclist(dll);
+for _,n in ipairs(m) do
+  print(n)
+end
 
 do
   io.write(".")
