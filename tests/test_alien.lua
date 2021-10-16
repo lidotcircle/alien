@@ -1,6 +1,7 @@
 alien = require("alien")
 
 local dll = alien.load("alientest")
+print(alien.funclist(dll));
 
 do
   io.write(".")

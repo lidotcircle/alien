@@ -17,7 +17,7 @@ add_library(alien SHARED)
 set_target_properties(alien PROPERTIES
     OUTPUT_NAME alien_c
     PREFIX "")
-target_sources(alien PRIVATE src/alien.c ${alien_lua})
+target_sources(alien PRIVATE src/alien.c src/utils.c ${alien_lua})
 target_include_directories(alien PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(alien PRIVATE lua)
 

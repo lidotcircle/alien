@@ -430,7 +430,13 @@ static int alien_funclist(lua_State* L) {
     }
 
     lua_newtable(L);
+    for (size_t i=1;i<lf_size(functions);i++) {
+        lua_pushnumber(L, i);
+        lua_pushstring(L, lf_index(functions, i - 1));
+        lua_settable(L, -3);
+    }
 
+    lf_free(functions);
     return 1;
 }
 
