@@ -357,6 +357,9 @@ static void *alien_loadfunc (lua_State *L, void *lib, const char *sym) {
 #define FFI_SYSV FFI_DEFAULT_ABI
 #endif
 
+#include "utils.h"
+
+
 static const ffi_abi ffi_abis[] = { FFI_DEFAULT_ABI, FFI_SYSV, FFI_STDCALL };
 static const char *const ffi_abi_names[] = { "default", "cdecl", "stdcall", NULL };
 
@@ -412,6 +415,23 @@ static int alien_load(lua_State *L) {
   al->lib = lib;
   al->name = name;
   return 1;
+}
+
+static int alien_funclist(lua_State* L) {
+    alien_Library* al = alien_checklibrary(L, 1);
+    int n = lua_gettop(L);
+    if (n > 1)
+        return luaL_error(L, "alien: too many arguments(funclist)");
+
+    function_list* functions = lf_load(al->lib);
+    if (functions == NULL) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    lua_newtable(L);
+
+    return 1;
 }
 
 static int alien_makefunction(lua_State *L, void *lib, void *fn, char *name) {
@@ -786,9 +806,9 @@ static int alien_function_call(lua_State *L) {
   case AT_float: ffi_call(cif, af->fn, &fret, args); lua_pushnumber(L, fret); break;
   case AT_double: ffi_call(cif, af->fn, &dret, args); lua_pushnumber(L, dret); break;
   case AT_string: ffi_call(cif, af->fn, &pret, args);
-    pret ? lua_pushstring(L, (const char *)pret) : lua_pushnil(L); break;
+    if (pret) lua_pushstring(L, (const char *)pret); else lua_pushnil(L); break;
   case AT_pointer: ffi_call(cif, af->fn, &pret, args);
-    pret ? lua_pushlightuserdata(L, pret) : lua_pushnil(L); break;
+    if (pret) lua_pushlightuserdata(L, pret); else lua_pushnil(L); break;
   default:
     return luaL_error(L, "alien: unknown return type (function %s)", af->name ?
                       af->name : "anonymous");
@@ -1185,6 +1205,7 @@ static int alien_memset(lua_State *L) {
 
 static const luaL_Reg alienlib[] = {
   {"load", alien_load},
+  {"funclist", alien_funclist},
   {"align", alien_align},
   {"tag", alien_register},
   {"wrap", alien_wrap},
