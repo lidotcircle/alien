@@ -786,9 +786,9 @@ static int alien_function_call(lua_State *L) {
   case AT_float: ffi_call(cif, af->fn, &fret, args); lua_pushnumber(L, fret); break;
   case AT_double: ffi_call(cif, af->fn, &dret, args); lua_pushnumber(L, dret); break;
   case AT_string: ffi_call(cif, af->fn, &pret, args);
-    pret = lua_pushstring(L, (const char *)pret); lua_pushnil(L); break;
+    pret ? lua_pushstring(L, (const char *)pret) : lua_pushnil(L); break;
   case AT_pointer: ffi_call(cif, af->fn, &pret, args);
-    lua_pushlightuserdata(L, pret); lua_pushnil(L); break;
+    pret ? lua_pushlightuserdata(L, pret) : lua_pushnil(L); break;
   default:
     return luaL_error(L, "alien: unknown return type (function %s)", af->name ?
                       af->name : "anonymous");
