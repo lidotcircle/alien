@@ -2,6 +2,7 @@ name: lua alien release
 on:
   push:
     branches:
+      - master
       - dev
     tags:
       - v[0-9]+.[0-9]+
