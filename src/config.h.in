@@ -1,0 +1,6 @@
+#pragma once
+
+#cmakedefine HAVE_ALLOCA_H
+#cmakedefine HAVE_STDINT_H
+#define VERSION "${CMAKE_PROJECT_VERSION}"
+

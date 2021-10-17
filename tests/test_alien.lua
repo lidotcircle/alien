@@ -1,6 +1,11 @@
-alien = require "alien"
+alien = require("alien")
 
-local dll = alien.load "alientest"
+local dll = alien.load("alientest")
+
+local m = alien.functionlist(dll);
+for i,n in ipairs(m) do
+    assert(alien.hasfunction(dll, n))
+end
 
 do
   io.write(".")

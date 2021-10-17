@@ -1,0 +1,15 @@
+
+if (NOT TARGET lua)
+    include(FindLua)
+    if(LUA_FOUND)
+        message("-- Found lua")
+    else()
+        message(FATAL_ERROR "Lua not found")
+    endif()
+
+    add_library(lua INTERFACE)
+    target_include_directories(lua INTERFACE ${LUA_INCLUDE_DIR})
+    if (WIN32)
+        target_link_libraries(lua INTERFACE ${LUA_LIBRARIES})
+    endif()
+endif()
