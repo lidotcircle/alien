@@ -17,6 +17,7 @@ struct function_list {
 function_list* lf_load(const void* vlib)
 {
     HMODULE lib = (HMODULE)vlib;
+    if (!lib) lib = GetModuleHandle(NULL);
     assert(((PIMAGE_DOS_HEADER)lib)->e_magic == IMAGE_DOS_SIGNATURE);
     PIMAGE_NT_HEADERS header = (PIMAGE_NT_HEADERS)((BYTE *)lib + ((PIMAGE_DOS_HEADER)lib)->e_lfanew);
     assert(header->Signature == IMAGE_NT_SIGNATURE);
@@ -49,14 +50,16 @@ function_list* lf_load(const void* vlib)
 function_list* lf_load(const void* lib)
 {
     struct link_map* mlib = (struct link_map*)lib;
+    if (lib == NULL)
+        mlib = dlopen(NULL, RTLD_NOW);
 
-    Elf64_Sym* symtab = NULL;
+    ElfW(Sym)* symtab = NULL;
     char* strtab = NULL;
     int symentries = 0;
-    for (Elf64_Dyn* section = mlib->l_ld; section->d_tag != DT_NULL; ++section)
+    for (ElfW(Dyn)* section = mlib->l_ld; section->d_tag != DT_NULL; ++section)
     {
         if (section->d_tag == DT_SYMTAB)
-            symtab = (Elf64_Sym *)section->d_un.d_ptr;
+            symtab = (ElfW(Sym)*)section->d_un.d_ptr;
         if (section->d_tag == DT_STRTAB)
             strtab = (char*)section->d_un.d_ptr;
         if (section->d_tag == DT_SYMENT)
@@ -66,7 +69,7 @@ function_list* lf_load(const void* lib)
     size_t size = strtab - (char *)symtab;
     size_t esize = 0;
     for (size_t k = 0; k < size / symentries; ++k) {
-        if (ELF64_ST_TYPE(symtab[k].st_info) == STT_FUNC)
+        if (ELF32_ST_TYPE(symtab[k].st_info) == STT_FUNC)
             esize += 1;
     }
 
@@ -78,9 +81,9 @@ function_list* lf_load(const void* lib)
 
     for (size_t k = 0; k < size / symentries; ++k)
     {
-        Elf64_Sym* sym = &symtab[k];
+        ElfW(Sym)* sym = &symtab[k];
         // If sym is function
-        if (ELF64_ST_TYPE(symtab[k].st_info) == STT_FUNC)
+        if (ELF32_ST_TYPE(symtab[k].st_info) == STT_FUNC)
         {
             //str is name of each symbol
             const char* str = &strtab[sym->st_name];
@@ -92,6 +95,10 @@ function_list* lf_load(const void* lib)
             nt++;
         }
     }
+
+    if (lib == NULL)
+        dlclose(mlib);
+
     assert(nt == esize);
     return fl;
 }

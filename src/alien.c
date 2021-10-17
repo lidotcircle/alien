@@ -1370,11 +1370,12 @@ __EXPORT int luaopen_alien_c(lua_State *L) {
   lua_settable(L, -3);
   lua_pop(L, 1);
 
-  /* Register main library */
-  luaL_register(L, "alien", alienlib);
   /* library function cache */
   lua_newtable(L);
   library_cache_entry = luaL_ref(L, LUA_REGISTRYINDEX);
+
+  /* Register main library */
+  luaL_register(L, "alien", alienlib);
   /* Version */
   lua_pushliteral(L, MYVERSION);
   lua_setfield(L, -2, "version");
