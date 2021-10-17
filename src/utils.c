@@ -49,11 +49,6 @@ function_list* lf_load(const void* vlib)
 function_list* lf_load(const void* lib)
 {
     struct link_map* mlib = (struct link_map*)lib;
-    /*
-    if (!dlinfo(lib, RTLD_DI_LINKMAP, &mlib)) {
-        return NULL;
-    }
-    */
 
     Elf64_Sym* symtab = NULL;
     char* strtab = NULL;

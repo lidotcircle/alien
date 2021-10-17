@@ -1,10 +1,10 @@
 alien = require("alien")
 
 local dll = alien.load("alientest")
-print(alien.funclist(dll));
-local m = alien.funclist(dll);
-for _,n in ipairs(m) do
-  print(n)
+
+local m = alien.functionlist(dll);
+for i,n in ipairs(m) do
+    assert(alien.hasfunction(dll, n))
 end
 
 do

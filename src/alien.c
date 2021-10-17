@@ -60,6 +60,7 @@
 
 #define MYNAME          "alien"
 #define MYVERSION       MYNAME " library for " LUA_VERSION " / " VERSION
+#define FUNCTION_CACHE  "__library_functions_cache"
 
 #include "lua.h"
 #include "lualib.h"
@@ -175,6 +176,12 @@ typedef enum {
 #undef MENTRY
   AT_ENTRY_COUNT
 } alien_Type;
+
+static int library_cache_entry = 0;
+int get_cache(lua_State* L) {
+    lua_rawgeti(L, LUA_REGISTRYINDEX, library_cache_entry);
+    return 1;
+}
 
 static const char *const alien_typenames[] =  {
 #define MENTRY(_n, _b, _s, _a) (_n),
@@ -417,11 +424,18 @@ static int alien_load(lua_State *L) {
   return 1;
 }
 
-static int alien_funclist(lua_State* L) {
-    alien_Library* al = alien_checklibrary(L, 1);
+static int alien_functionlist(lua_State* L) {
     int n = lua_gettop(L);
-    if (n > 1)
-        return luaL_error(L, "alien: too many arguments(funclist)");
+    if (n != 1)
+        return luaL_error(L, "alien: too %s arguments[ functionlist(alien_library) ]", 
+                          n > 1 ? "many" : "few");
+
+    alien_Library* al = alien_checklibrary(L, 1);
+    get_cache(L);
+    lua_getfield(L, -1, al->name);
+    if (!lua_isnil(L, -1))
+        return 1;
+    lua_pop(L, 2);
 
     function_list* functions = lf_load(al->lib);
     if (functions == NULL) {
@@ -437,6 +451,40 @@ static int alien_funclist(lua_State* L) {
     }
 
     lf_free(functions);
+
+    get_cache(L);
+    lua_setfield(L, -2, al->name);
+    return 1;
+}
+
+static int alien_hasfunction(lua_State* L) {
+    size_t nargs = lua_gettop(L);
+    if (nargs != 2) {
+        return luaL_error(L, "alien: too %s arguments (function hasfunction)",
+                          nargs < 2 ? "few" : "many");
+    }
+
+    alien_Library* al = alien_checklibrary(L, 1);
+    size_t len;
+    const char* funcname = luaL_checklstring(L, 2, &len);
+
+    lua_pushcfunction(L, alien_functionlist);
+    lua_pushvalue(L, 1);
+    lua_call(L, 1, 1);
+
+    size_t n = lua_objlen(L, 3);
+    for(size_t i=0;i<n;i++) {
+        lua_geti(L, 3, i + 1);
+        const char* u = luaL_checkstring(L, -1);
+
+        if (!strcmp(u, funcname)) {
+            lua_pushboolean(L, 1);
+            return 1;
+        }
+        lua_pop(L, 1);
+    }
+
+    lua_pushboolean(L, 0);
     return 1;
 }
 
@@ -682,7 +730,7 @@ static int alien_function_types(lua_State *L) {
   if(status != FFI_OK)
     return luaL_error(L, "alien: error in libffi preparation");
   if(af->fn_ref) {
-    status = ffi_prep_closure(af->fn, &(af->cif), &alien_callback_call, af);
+    status = ffi_prep_closure_loc(af->fn, &(af->cif), &alien_callback_call, af, af->ffi_codeloc);
     if(status != FFI_OK) return luaL_error(L, "alien: cannot create callback");
   }
   return 0;
@@ -835,6 +883,15 @@ static int alien_library_gc(lua_State *L) {
   alien_Library *al = alien_checklibrary(L, 1);
   void *aud;
   lua_Alloc lalloc = lua_getallocf(L, &aud);
+
+  if (al->name != NULL) {
+    get_cache(L);
+    lua_pushstring(L, al->name);
+    lua_pushnil(L);
+    lua_settable(L, -3);
+    lua_pop(L, 1);
+  }
+
   if(al->lib) {
     alien_unload(al->lib);
     al->lib = NULL;
@@ -1211,7 +1268,8 @@ static int alien_memset(lua_State *L) {
 
 static const luaL_Reg alienlib[] = {
   {"load", alien_load},
-  {"funclist", alien_funclist},
+  {"functionlist", alien_functionlist},
+  {"hasfunction", alien_hasfunction},
   {"align", alien_align},
   {"tag", alien_register},
   {"wrap", alien_wrap},
@@ -1314,6 +1372,9 @@ __EXPORT int luaopen_alien_c(lua_State *L) {
 
   /* Register main library */
   luaL_register(L, "alien", alienlib);
+  /* library function cache */
+  lua_newtable(L);
+  library_cache_entry = luaL_ref(L, LUA_REGISTRYINDEX);
   /* Version */
   lua_pushliteral(L, MYVERSION);
   lua_setfield(L, -2, "version");
