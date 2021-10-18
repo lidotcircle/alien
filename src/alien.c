@@ -365,6 +365,7 @@ static void *alien_loadfunc (lua_State *L, void *lib, const char *sym) {
 #endif
 
 #include "utils.h"
+#include <funchook.h>
 
 
 static const ffi_abi ffi_abis[] = { FFI_DEFAULT_ABI, FFI_SYSV, FFI_STDCALL };
@@ -877,6 +878,14 @@ static int alien_function_call(lua_State *L) {
     }
   }
   return 1 + nrefi + nrefui + nrefc + nrefd;
+}
+
+static int alien_function_hook(lua_State* L) {
+    return 1;
+}
+
+static int alien_function_unhook(lua_State* L) {
+    return 1;
 }
 
 static int alien_library_gc(lua_State *L) {
