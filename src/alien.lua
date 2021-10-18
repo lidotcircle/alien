@@ -14,6 +14,30 @@ local math = math
 local load, callback = alien.load, alien.callback
 
 _M.loaded = {}
+_M.types = {
+  void = "void",
+  byte = "byte",
+  char = "char",
+  short = "short",
+  ushort = "ushort",
+  int = "int",
+  uint = "uint",
+  long = "long",
+  ulong = "ulong",
+  ptrdiff_t = "ptrdiff_t",
+  size_t = "size_t",
+  float = "float",
+  double = "double",
+  string = "string",
+  pointer = "pointer",
+  ref_char = "ref char",
+  ref_int = "ref int",
+  ref_uint = "ref uint",
+  ref_double = "ref double",
+  longlong = "longlong",
+  ulonglong = "ulonglong",
+  callback = "callback",
+};
 
 local load_library, find_library = {}, {}
 

@@ -17,20 +17,26 @@ endif()
 include("cmake/lua.cmake")
 include("cmake/libffi.cmake")
 
-set(alien_lua ${CMAKE_CURRENT_LIST_DIR}/src/alien.lua)
 add_library(alien SHARED)
 set_target_properties(alien PROPERTIES
     OUTPUT_NAME alien_c
     PREFIX "")
-target_sources(alien PRIVATE src/alien.c src/utils.c ${alien_lua})
+target_sources(alien PRIVATE src/alien.c src/utils.c)
 target_include_directories(alien PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(alien PRIVATE lua)
-
 link_libffi(alien)
-add_custom_command(TARGET alien POST_BUILD
+
+set(alien_lua_f ${CMAKE_CURRENT_LIST_DIR}/src/alien.lua)
+add_custom_target(alien_lua ALL
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${alien_lua} $<TARGET_FILE_DIR:alien>
-    )
+    ${alien_lua_f} $<TARGET_FILE_DIR:alien> DEPENDS ${lua_test_file})
+
+set(alien_lua_d ${CMAKE_CURRENT_LIST_DIR}/src/alien)
+file(GLOB_RECURSE alien_lua_d_f ${alien_lua_d}/*)
+add_custom_target(alien_lua_sub ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${alien_lua_d} $<TARGET_FILE_DIR:alien>/alien
+    DEPENDS ${alien_lua_d_f})
 
 
 add_library(alientest SHARED tests/alientest.c)
