@@ -16,6 +16,7 @@ endif()
 
 include("cmake/lua.cmake")
 include("cmake/libffi.cmake")
+add_subdirectory("thirdparty/funchook/")
 
 add_library(alien SHARED)
 set_target_properties(alien PROPERTIES
@@ -25,6 +26,7 @@ target_sources(alien PRIVATE src/alien.c src/utils.c)
 target_include_directories(alien PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(alien PRIVATE lua)
 link_libffi(alien)
+link_libraries(alien funchook-shared)
 
 set(alien_lua_f ${CMAKE_CURRENT_LIST_DIR}/src/alien.lua)
 add_custom_target(alien_lua ALL

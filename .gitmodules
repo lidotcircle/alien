@@ -1,0 +1,3 @@
+[submodule "thirdparty/funchook"]
+	path = thirdparty/funchook
+	url = https://github.com/lidotcircle/funchook.git
