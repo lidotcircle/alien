@@ -9,6 +9,11 @@ CHECK_INCLUDE_FILE(alloca.h HAVE_ALLOCA_H)
 CHECK_INCLUDE_FILE(stdint.h HAVE_STDINT_H)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
+if(WIN32)
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi")
+set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG /OPT:REF /OPT:ICF")
+endif()
+
 include("cmake/lua.cmake")
 include("cmake/libffi.cmake")
 
