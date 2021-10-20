@@ -983,7 +983,10 @@ static int alien_function_hook(lua_State* L) {
   ac->lib = lalloc(aud, NULL, 0, strlen(oac->name) + 1);
   if (ac->lib == NULL)
     return luaL_error(L, "aline: out of memory");
-  memcpy(ac->lib, oac->lib, strlen(oac->lib) + 1);
+  const char* libname = NULL;
+  if (oac->lib != NULL)
+      libname = oac->lib->name;
+  memcpy(ac->lib, oac->lib, strlen(libname) + 1);
   const char* trampoline_prefix = "trampoline_";
   ac->name = lalloc(aud, NULL, 0, strlen(trampoline_prefix) + strlen(oac->name) + 1);
   if (ac->name == NULL)
@@ -992,7 +995,7 @@ static int alien_function_hook(lua_State* L) {
   memcpy(ac->name + strlen(trampoline_prefix), oac->name, strlen(oac->name) + 1);
 
   get_hook_function_table(L);
-  get_hook_entry(L, oac->lib, oac->name);
+  get_hook_entry(L, libname, oac->name);
   lua_pushvalue(L, -3);
   lua_settable(L, -3);
   lua_pop(L, 1);
@@ -1003,7 +1006,10 @@ static int alien_function_hook(lua_State* L) {
 static int alien_function_trampoline(lua_State* L) {
   alien_Function* oac = alien_checkfunction(L, 1);
   get_hook_function_table(L);
-  get_hook_entry(L, oac->lib, oac->name);
+  const char* libname = NULL;
+  if (oac->lib != NULL)
+      libname = oac->lib->name;
+  get_hook_entry(L, libname, oac->name);
   lua_gettable(L, -2);
 
   return 1;
@@ -1016,19 +1022,22 @@ static int alien_function_unhook(lua_State* L) {
   }
 
   get_hook_function_table(L);
-  get_hook_entry(L, oac->lib, oac->name);
+  const char* libname = NULL;
+  if (oac->lib != NULL)
+      libname = oac->lib->name;
+  get_hook_entry(L, libname, oac->name);
   lua_gettable(L, -2);
   alien_Function* ac = alien_checkfunction(L, -1);
   if (funchook_uninstall(ac->hookhandle, 0) != FUNCHOOK_ERROR_SUCCESS) {
     return luaL_error(L, "aline: unhook failed");
   }
-  funchook_destroy(ac->hookhandle, 0);
+  funchook_destroy(ac->hookhandle);
   ac->hookhandle = NULL;
   ac->fn = ac->scc;
   ac->scc = NULL;
   lua_pop(L, 1);
 
-  get_hook_entry(L, oac->lib, oac->name);
+  get_hook_entry(L, libname, oac->name);
   lua_pushnil(L);
   lua_settable(L, -3);
 
