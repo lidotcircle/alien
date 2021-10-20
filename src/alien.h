@@ -71,6 +71,10 @@
 #elif defined(__APPLE__)
 #define PLATFORM "darwin"
 #define USE_DLOPEN
+#elif defined(WINDOWS)
+#define PLATFORM "windows"
+#else
+#define PLATFORM "unknown"
 #endif
 
 #include "lua.h"

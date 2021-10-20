@@ -30,8 +30,6 @@ static void *alien_loadfunc (lua_State *L, void *lib, const char *sym) {
 
 #elif defined(WINDOWS)
 
-#define PLATFORM "windows"
-
 static void pusherror (lua_State *L) {
     int error = GetLastError();
     char buffer[128];
@@ -66,8 +64,6 @@ static void *alien_loadfunc (lua_State *L, void *lib, const char *sym) {
 #else
 
 #define DLMSG   "dynamic libraries not enabled; check your Lua installation"
-
-#define PLATFORM "unknown"
 
 static void alien_unload (void *lib) {
     (void)lib;  /* to avoid warnings */
