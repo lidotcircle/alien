@@ -18,7 +18,7 @@ GetTickCount:hook(function () return 0 end)
 count = GetTickCount()
 assert(count == 0)
 
-count = GetTickCount:trampoline()()
+count = GetTickCount:horigin()()
 assert(count > 0)
 
 GetTickCount:unhook()

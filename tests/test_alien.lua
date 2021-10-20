@@ -12,11 +12,14 @@ get2times:types({ret = "int", "int"})
 local n2t = get2times(100)
 assert(n2t == 200)
 
+get2times:hook(function (n) return 0 end)
+get2times:unhook()
+
 get2times:hook(function (n) return n end)
 n2t = get2times(100)
 assert(n2t == 100)
 
-n2t = get2times:trampoline()(100)
+n2t = get2times:horigin()(100)
 assert(n2t == 200)
 
 get2times:unhook()

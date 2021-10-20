@@ -190,14 +190,21 @@ static int get_hook_function_table(lua_State* L) {
 static int get_hook_entry(lua_State* L, const char* lib, const char* name) {
   void* aud = NULL;
   lua_Alloc lalloc = lua_getallocf(L, &aud);
-  char* ename = lalloc(aud, NULL, 0, strlen(lib) + strlen(name) + 2);
+  size_t a = 0, b = 0;
+  if (lib != NULL)
+      a = strlen(lib);
+  if (name != NULL)
+      b = strlen(lib);
+  char* ename = lalloc(aud, NULL, 0, a + b + 2);
   if (ename == NULL)
     return luaL_error(L, "aline: out of memory");
-  memcpy(ename, lib, strlen(lib));
-  ename[strlen(lib)] = '/';
-  strcpy(ename + strlen(lib) + 1, name);
+  if (a > 0)
+      memcpy(ename, lib, a);
+  ename[a] = '/';
+  if (b > 0)
+      strcpy(ename + a + 1, name);
   lua_pushstring(L, ename);
-  lalloc(aud, NULL, strlen(lib) + strlen(name) + 2, 0);
+  lalloc(aud, NULL, a + b + 2, 0);
 
   return 1;
 }
@@ -704,7 +711,7 @@ static int alien_function_types(lua_State *L) {
   ffi_abi abi;
   alien_Function *af = alien_checkfunction(L, 1);
   if (af->hookhandle) {
-    return luaL_error(L, "aline: type of trampoline function must be confirmed when creating");
+    return luaL_error(L, "aline: type of horigin function must be confirmed when creating");
   }
   if (af->is_hooked) {
     return luaL_error(L, "aline: can't change type of hooked function, TODO");
@@ -915,7 +922,7 @@ static int alien_function_call(lua_State *L) {
 static int alien_function_hook(lua_State* L) {
   alien_Function* oac = alien_checkfunction(L, 1);
   if (oac->hookhandle) {
-    return luaL_error(L, "aline: can't hook trampoline function");
+    return luaL_error(L, "aline: can't hook horigin function");
   }
   if (oac->is_hooked) {
     return luaL_error(L, "aline: function already be hooked");
@@ -980,19 +987,20 @@ static int alien_function_hook(lua_State* L) {
   ac->hookhandle = hook;
   oac->is_hooked = 1;
 
-  ac->lib = lalloc(aud, NULL, 0, strlen(oac->name) + 1);
-  if (ac->lib == NULL)
-    return luaL_error(L, "aline: out of memory");
+  ac->lib = oac->lib;
   const char* libname = NULL;
   if (oac->lib != NULL)
       libname = oac->lib->name;
-  memcpy(ac->lib, oac->lib, strlen(libname) + 1);
-  const char* trampoline_prefix = "trampoline_";
-  ac->name = lalloc(aud, NULL, 0, strlen(trampoline_prefix) + strlen(oac->name) + 1);
+  const char* horigin_prefix = "horigin_";
+  size_t namelen = 0;
+  if (oac->name != NULL)
+      namelen = strlen(oac->name);
+  ac->name = lalloc(aud, NULL, 0, strlen(horigin_prefix) + namelen + 1);
   if (ac->name == NULL)
     return luaL_error(L, "aline: out of memory");
-  memcpy(ac->name, trampoline_prefix, strlen(trampoline_prefix));
-  memcpy(ac->name + strlen(trampoline_prefix), oac->name, strlen(oac->name) + 1);
+  strcpy(ac->name, horigin_prefix);
+  if (namelen > 0)
+      strcpy(ac->name + strlen(horigin_prefix), oac->name);
 
   get_hook_function_table(L);
   get_hook_entry(L, libname, oac->name);
@@ -1003,7 +1011,7 @@ static int alien_function_hook(lua_State* L) {
   return 1;
 }
 
-static int alien_function_trampoline(lua_State* L) {
+static int alien_function_horigin(lua_State* L) {
   alien_Function* oac = alien_checkfunction(L, 1);
   get_hook_function_table(L);
   const char* libname = NULL;
@@ -1027,11 +1035,17 @@ static int alien_function_unhook(lua_State* L) {
       libname = oac->lib->name;
   get_hook_entry(L, libname, oac->name);
   lua_gettable(L, -2);
+
+  if (lua_isnil(L, -1)) {
+      return luaL_error(L, "aline: function desn't be hooked");
+  }
+
   alien_Function* ac = alien_checkfunction(L, -1);
   if (funchook_uninstall(ac->hookhandle, 0) != FUNCHOOK_ERROR_SUCCESS) {
     return luaL_error(L, "aline: unhook failed");
   }
   funchook_destroy(ac->hookhandle);
+  oac->is_hooked = 0;
   ac->hookhandle = NULL;
   ac->fn = ac->scc;
   ac->scc = NULL;
@@ -1072,6 +1086,13 @@ static int alien_function_gc(lua_State *L) {
   if(af->name) LALLOC_FREE_STRING(lalloc, aud, af->name);
   if(af->params) lalloc(aud, af->params, sizeof(alien_Type) * af->nparams, 0);
   if(af->ffi_params) lalloc(aud, af->ffi_params, sizeof(ffi_type *) * af->nparams, 0);
+  if(af->hookhandle) {
+      funchook_uninstall(af->hookhandle, 0);
+      funchook_destroy(af->hookhandle);
+      af->hookhandle = NULL;
+      af->fn = af->scc;
+      af->scc = NULL;
+  }
   if(af->fn_ref) {
     luaL_unref(af->L, LUA_REGISTRYINDEX, af->fn_ref);
     ffi_closure_free(af->fn);
@@ -1510,8 +1531,8 @@ __EXPORT int luaopen_alien_c(lua_State *L) {
   lua_pushliteral(L, "unhook");
   lua_pushcfunction(L, alien_function_unhook);
   lua_settable(L, -3);
-  lua_pushliteral(L, "trampoline");
-  lua_pushcfunction(L, alien_function_trampoline);
+  lua_pushliteral(L, "horigin");
+  lua_pushcfunction(L, alien_function_horigin);
   lua_settable(L, -3);
   lua_settable(L, -3);
   lua_pushliteral(L, "__call");
