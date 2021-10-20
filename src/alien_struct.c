@@ -1,14 +1,9 @@
-
 #include <assert.h>
 #include <ctype.h>
 #include <limits.h>
 #include <string.h>
 
-
-#define LUA_COMPAT_ALL
-
-#include "lua.h"
-#include "lauxlib.h"
+#include "alien.h"
 
 /*
 ** {======================================================
@@ -91,8 +86,8 @@ static size_t optsize (lua_State *L, char opt, const char **fmt) {
     case 'B': case 'b': return sizeof(char);
     case 'H': case 'h': return sizeof(short);
     case 'L': case 'l': return sizeof(long);
-    case 'f':  return sizeof(float);
-    case 'd':  return sizeof(double);
+    case 'f': return sizeof(float);
+    case 'd': return sizeof(double);
     case 'x': return 1;
     case 'c': return getnum(fmt, 1);
     case 's': case ' ': case '<': case '>': case '!': return 0;
@@ -168,7 +163,7 @@ static void correctbytes (char *b, int size, int endian) {
 }
 
 
-static int b_pack (lua_State *L) {
+int b_pack (lua_State *L) {
   luaL_Buffer b;
   const char *fmt = luaL_checkstring(L, 1);
   Header h;
@@ -256,7 +251,7 @@ static lua_Number getinteger (const char *buff, int endian,
   }
 }
 
-static int b_size (lua_State *L) {
+int b_size (lua_State *L) {
   Header h;
   const char *fmt = luaL_checkstring(L, 1);
   size_t totalsize = 0;
@@ -287,7 +282,7 @@ static int b_size (lua_State *L) {
   return 1;
 }
 
-static int b_offset (lua_State *L) {
+int b_offset (lua_State *L) {
   Header h;
   const char *fmt = luaL_checkstring(L, 1);
   int offset = luaL_optint(L, 2, 1);
@@ -322,7 +317,7 @@ static int b_offset (lua_State *L) {
 }
 
 
-static int b_unpack (lua_State *L) {
+int b_unpack (lua_State *L) {
   Header h;
   const char *fmt = luaL_checkstring(L, 1);
   size_t ld, pos;
