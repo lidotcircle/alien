@@ -7,6 +7,22 @@ for i,n in ipairs(m) do
     assert(alien.hasfunction(dll, n))
 end
 
+local get2times = dll.get2times
+get2times:types({ret = "int", "int"})
+local n2t = get2times(100)
+assert(n2t == 200)
+
+get2times:hook(function (n) return n end)
+n2t = get2times(100)
+assert(n2t == 100)
+
+n2t = get2times:trampoline()(100)
+assert(n2t == 200)
+
+get2times:unhook()
+n2t = get2times(100)
+assert(n2t == 200)
+
 do
   io.write(".")
   local f = dll._testfunc_i_bhilpfdll

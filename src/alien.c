@@ -178,9 +178,28 @@ typedef enum {
 } alien_Type;
 
 static int library_cache_entry = 0;
-int get_cache(lua_State* L) {
+static int hook_function_table = 0;
+static int get_cache(lua_State* L) {
     lua_rawgeti(L, LUA_REGISTRYINDEX, library_cache_entry);
     return 1;
+}
+static int get_hook_function_table(lua_State* L) {
+    lua_rawgeti(L, LUA_REGISTRYINDEX, hook_function_table);
+    return 1;
+}
+static int get_hook_entry(lua_State* L, const char* lib, const char* name) {
+  void* aud = NULL;
+  lua_Alloc lalloc = lua_getallocf(L, &aud);
+  char* ename = lalloc(aud, NULL, 0, strlen(lib) + strlen(name) + 2);
+  if (ename == NULL)
+    return luaL_error(L, "aline: out of memory");
+  memcpy(ename, lib, strlen(lib));
+  ename[strlen(lib)] = '/';
+  strcpy(ename + strlen(lib) + 1, name);
+  lua_pushstring(L, ename);
+  lalloc(aud, NULL, strlen(lib) + strlen(name) + 2, 0);
+
+  return 1;
 }
 
 static const char *const alien_typenames[] =  {
@@ -239,6 +258,9 @@ typedef struct {
   lua_State *L;
   void *ffi_codeloc;
   int fn_ref;
+  int is_hooked;
+  void* hookhandle;
+  void* scc;
 } alien_Function;
 
 typedef struct {
@@ -503,6 +525,8 @@ static int alien_makefunction(lua_State *L, void *lib, void *fn, char *name) {
   af->ret_type = AT_void;
   af->params = NULL;
   af->ffi_params = NULL;
+  af->is_hooked = 0;
+  af->hookhandle = NULL;
   return 1;
 }
 
@@ -647,6 +671,8 @@ static int alien_callback_new(lua_State *L) {
   }
   ac->lib = NULL;
   ac->name = NULL;
+  ac->is_hooked = 0;
+  ac->hookhandle = NULL;
   return 1;
 }
 
@@ -677,6 +703,12 @@ static int alien_function_types(lua_State *L) {
   ffi_status status;
   ffi_abi abi;
   alien_Function *af = alien_checkfunction(L, 1);
+  if (af->hookhandle) {
+    return luaL_error(L, "aline: type of trampoline function must be confirmed when creating");
+  }
+  if (af->is_hooked) {
+    return luaL_error(L, "aline: can't change type of hooked function, TODO");
+  }
   int i, ret_type;
   void *aud;
   lua_Alloc lalloc = lua_getallocf(L, &aud);
@@ -881,11 +913,126 @@ static int alien_function_call(lua_State *L) {
 }
 
 static int alien_function_hook(lua_State* L) {
-    return 1;
+  alien_Function* oac = alien_checkfunction(L, 1);
+  if (oac->hookhandle) {
+    return luaL_error(L, "aline: can't hook trampoline function");
+  }
+  if (oac->is_hooked) {
+    return luaL_error(L, "aline: function already be hooked");
+  }
+
+  luaL_checktype(L, 2, LUA_TFUNCTION);
+
+  void *aud;
+  lua_Alloc lalloc = lua_getallocf(L, &aud);
+  alien_Function *ac;
+  ac = (alien_Function *)lua_newuserdata(L, sizeof(alien_Function));
+  if(!ac) return luaL_error(L, "alien: out of memory");
+  ac->fn = ffi_closure_alloc(sizeof(ffi_closure), &ac->ffi_codeloc);
+  if(ac->fn == NULL) return luaL_error(L, "alien: cannot allocate callback");
+  ac->L = L;
+  ac->is_hooked = 0;
+  ac->hookhandle = NULL;
+  ac->lib = NULL;
+  ac->name = NULL;
+  ac->ret_type = oac->ret_type;
+  ac->ffi_ret_type = oac->ffi_ret_type;
+  ac->nparams = oac->nparams;
+  if(ac->nparams > 0) {
+    ac->ffi_params = (ffi_type **)lalloc(aud, NULL, 0, sizeof(ffi_type *) * ac->nparams);
+    if(!ac->ffi_params) return luaL_error(L, "alien: out of memory");
+    ac->params = (alien_Type *)lalloc(aud, NULL, 0, ac->nparams * sizeof(alien_Type));
+    if(!ac->params) return luaL_error(L, "alien: out of memory");
+
+    for (size_t i=0;i<ac->nparams;i++) {
+      ac->ffi_params[i] = oac->ffi_params[i];
+      ac->params[i] = oac->params[i];
+    }
+  } else {
+    ac->ffi_params = NULL;
+    ac->params = NULL;
+  }
+  lua_pushvalue(L, 2);
+  ac->fn_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+  luaL_getmetatable(L, ALIEN_FUNCTION_META);
+  lua_setmetatable(L, -2);
+
+  ffi_status status = ffi_prep_cif(&(ac->cif), oac->cif.abi, ac->nparams,
+                                   ac->ffi_ret_type, ac->ffi_params);
+  if(status == FFI_OK)
+    status = ffi_prep_closure_loc(ac->fn, &(ac->cif), &alien_callback_call, ac, ac->ffi_codeloc);
+  if(status != FFI_OK) {
+    ffi_closure_free(ac->fn);
+    return luaL_error(L, "alien: cannot create callback");
+  }
+
+  funchook_t* hook = funchook_create();
+  ac->scc = ac->fn;
+  ac->fn = oac->fn;
+  if (funchook_prepare(hook, &ac->fn, ac->ffi_codeloc) != FUNCHOOK_ERROR_SUCCESS) {
+    funchook_destroy(hook);
+    return luaL_error(L, "alien: prepare hook failed");
+  }
+  if (funchook_install(hook, 0) != FUNCHOOK_ERROR_SUCCESS) {
+    funchook_destroy(hook);
+    return luaL_error(L, "alien: install hook failed");
+  }
+  ac->hookhandle = hook;
+  oac->is_hooked = 1;
+
+  ac->lib = lalloc(aud, NULL, 0, strlen(oac->name) + 1);
+  if (ac->lib == NULL)
+    return luaL_error(L, "aline: out of memory");
+  memcpy(ac->lib, oac->lib, strlen(oac->lib) + 1);
+  const char* trampoline_prefix = "trampoline_";
+  ac->name = lalloc(aud, NULL, 0, strlen(trampoline_prefix) + strlen(oac->name) + 1);
+  if (ac->name == NULL)
+    return luaL_error(L, "aline: out of memory");
+  memcpy(ac->name, trampoline_prefix, strlen(trampoline_prefix));
+  memcpy(ac->name + strlen(trampoline_prefix), oac->name, strlen(oac->name) + 1);
+
+  get_hook_function_table(L);
+  get_hook_entry(L, oac->lib, oac->name);
+  lua_pushvalue(L, -3);
+  lua_settable(L, -3);
+  lua_pop(L, 1);
+
+  return 1;
+}
+
+static int alien_function_trampoline(lua_State* L) {
+  alien_Function* oac = alien_checkfunction(L, 1);
+  get_hook_function_table(L);
+  get_hook_entry(L, oac->lib, oac->name);
+  lua_gettable(L, -2);
+
+  return 1;
 }
 
 static int alien_function_unhook(lua_State* L) {
-    return 1;
+  alien_Function* oac = alien_checkfunction(L, 1);
+  if (!oac->is_hooked) {
+    return luaL_error(L, "aline: function hasn't hooked");
+  }
+
+  get_hook_function_table(L);
+  get_hook_entry(L, oac->lib, oac->name);
+  lua_gettable(L, -2);
+  alien_Function* ac = alien_checkfunction(L, -1);
+  if (funchook_uninstall(ac->hookhandle, 0) != FUNCHOOK_ERROR_SUCCESS) {
+    return luaL_error(L, "aline: unhook failed");
+  }
+  funchook_destroy(ac->hookhandle, 0);
+  ac->hookhandle = NULL;
+  ac->fn = ac->scc;
+  ac->scc = NULL;
+  lua_pop(L, 1);
+
+  get_hook_entry(L, oac->lib, oac->name);
+  lua_pushnil(L);
+  lua_settable(L, -3);
+
+  return 0;
 }
 
 static int alien_library_gc(lua_State *L) {
@@ -1348,6 +1495,15 @@ __EXPORT int luaopen_alien_c(lua_State *L) {
   lua_pushliteral(L, "types");
   lua_pushcfunction(L, alien_function_types);
   lua_settable(L, -3);
+  lua_pushliteral(L, "hook");
+  lua_pushcfunction(L, alien_function_hook);
+  lua_settable(L, -3);
+  lua_pushliteral(L, "unhook");
+  lua_pushcfunction(L, alien_function_unhook);
+  lua_settable(L, -3);
+  lua_pushliteral(L, "trampoline");
+  lua_pushcfunction(L, alien_function_trampoline);
+  lua_settable(L, -3);
   lua_settable(L, -3);
   lua_pushliteral(L, "__call");
   lua_pushcfunction(L, alien_function_call);
@@ -1382,6 +1538,10 @@ __EXPORT int luaopen_alien_c(lua_State *L) {
   /* library function cache */
   lua_newtable(L);
   library_cache_entry = luaL_ref(L, LUA_REGISTRYINDEX);
+
+  /* hook function table */
+  lua_newtable(L);
+  hook_function_table = luaL_ref(L, LUA_REGISTRYINDEX);
 
   /* Register main library */
   luaL_register(L, "alien", alienlib);

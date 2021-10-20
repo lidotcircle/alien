@@ -13,3 +13,14 @@ local GetTickCount = kernel32.GetTickCount
 GetTickCount:types("int")
 local count = GetTickCount()
 assert(count > 0)
+
+GetTickCount:hook(function () return 0 end)
+count = GetTickCount()
+assert(count == 0)
+
+count = GetTickCount:trampoline()()
+assert(count > 0)
+
+GetTickCount:unhook()
+count = GetTickCount()
+assert(count > 0)

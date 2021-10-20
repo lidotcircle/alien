@@ -14,6 +14,10 @@
 #define EXPORT(x) x
 #endif
 
+EXPORT(int) get2times(int n) {
+	return 2 * n;
+}
+
 /* some functions handy for testing */
 
 EXPORT(void *) my_malloc(size_t size) {
