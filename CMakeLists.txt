@@ -66,6 +66,12 @@ if (NOT WIN32)
 target_link_libraries(alientest m)
 endif()
 
+add_library(lualoader SHARED tools/lualoader.c)
+target_link_libraries(lualoader PRIVATE lua)
+set_target_properties(lualoader PROPERTIES
+    OUTPUT_NAME lualdr
+    PREFIX "")
+
 enable_testing()
 file(GLOB alientest_lua "${CMAKE_CURRENT_LIST_DIR}/tests/test_*.lua")
 foreach(lua_test_file IN LISTS alientest_lua)
