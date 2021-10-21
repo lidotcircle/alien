@@ -10,6 +10,7 @@ types.pvoid     = types.pointer
 types.dword     = types.int
 types.boolean   = types.int
 types.ref_dword = types.ref_int
+types.ntstatus  = types.int
 
 ---@class HANDLE
 ---@class PVOID

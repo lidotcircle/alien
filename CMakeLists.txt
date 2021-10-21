@@ -60,13 +60,23 @@ add_custom_target(alien_lua_sub ALL
     ${alien_lua_d} $<TARGET_FILE_DIR:alien>/alien
     DEPENDS ${alien_lua_d_f})
 
+set(antianti ${CMAKE_CURRENT_LIST_DIR}/tools/antianti)
+file(GLOB_RECURSE antianti_SOURCES ${antianti}/*)
+add_custom_target(antianti_lib ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${antianti} $<TARGET_FILE_DIR:alien>/antianti
+    DEPENDS ${antianti_SOURCES})
 
 add_library(alientest SHARED tests/alientest.c)
 if (NOT WIN32)
 target_link_libraries(alientest m)
 endif()
 
-add_library(lualoader SHARED tools/lualoader.c)
+if (WIN32)
+add_executable(antclose ${CMAKE_CURRENT_LIST_DIR}/tools/antiDebug-ntclose.c)
+endif()
+
+add_library(lualoader SHARED ${CMAKE_CURRENT_LIST_DIR}/tools/lualoader.c)
 target_link_libraries(lualoader PRIVATE lua)
 set_target_properties(lualoader PROPERTIES
     OUTPUT_NAME lualdr
