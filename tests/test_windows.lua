@@ -10,7 +10,7 @@ assert(alien.hasfunction(kernel32, n))
 end
 
 local GetTickCount = kernel32.GetTickCount
-GetTickCount:types("int")
+GetTickCount:types({ret = "int", abi = "default"})
 local count = GetTickCount()
 assert(count > 0)
 
