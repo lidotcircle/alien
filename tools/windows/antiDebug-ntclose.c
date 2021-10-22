@@ -22,6 +22,7 @@ int Check()
 }
 
 int main() {
+    printf("start\n");
     Sleep(3000);
 
     if (Check()) {

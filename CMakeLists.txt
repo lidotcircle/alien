@@ -72,15 +72,7 @@ if (NOT WIN32)
 target_link_libraries(alientest m)
 endif()
 
-if (WIN32)
-add_executable(antclose ${CMAKE_CURRENT_LIST_DIR}/tools/antiDebug-ntclose.c)
-endif()
-
-add_library(lualoader SHARED ${CMAKE_CURRENT_LIST_DIR}/tools/lualoader.c)
-target_link_libraries(lualoader PRIVATE lua)
-set_target_properties(lualoader PROPERTIES
-    OUTPUT_NAME lualdr
-    PREFIX "")
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tools)
 
 enable_testing()
 file(GLOB alientest_lua "${CMAKE_CURRENT_LIST_DIR}/tests/test_*.lua")
