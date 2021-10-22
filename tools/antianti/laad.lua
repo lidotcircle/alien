@@ -45,7 +45,9 @@ kernel32.raw.CloseHandle:unhook()
 
 user32.raw.MessageBoxA:hook(function (hwnd, text, caption, type)
     print(string.format("MessageBox(0x%x, %s, %s, 0x%x)", hwnd, text, caption, type))
-    return user32.raw.MessageBoxA:horigin()(hwnd, text, caption, type)
+    local om = user32.raw.MessageBoxA:horigin()
+    print(string.format("MessageBoxA Trampoline 0x%x", om:addr()))
+    return om(hwnd, text, caption, type)
 end)
 
 print(string.format("MessageBoxA: 0x%x", user32.raw.MessageBoxA:addr()))

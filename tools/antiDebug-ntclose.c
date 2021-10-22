@@ -22,10 +22,7 @@ int Check()
 }
 
 int main() {
-    Sleep(1);
-    Sleep(1);
-    Sleep(1);
-    Sleep(1);
+    Sleep(3000);
 
     if (Check()) {
     printf("youke5\n");
