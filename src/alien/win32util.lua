@@ -1,6 +1,6 @@
 local _M = {}
 
-_M.WINAPI = "default"
-_M.NTAPI  = "default"
+_M.WINAPI = "stdcall"
+_M.NTAPI  = "stdcall"
 
 return _M

@@ -13,7 +13,7 @@ local abi   = require("alien.win32util").WINAPI
 kernel32.GetTickCount:types{ret = types.dword, abi = abi}
 function _M.GetTickCount(n) return kernel32.GetTickCount(n) end
 
-kernel32.CloseHandle:types{ret = types.handle, abi = abi, types.boolean}
+kernel32.CloseHandle:types{ret = types.boolean, abi = abi, types.handle}
 function _M.CloseHandle(handle) return kernel32.CloseHandle(handle) end
 
 _M.Memory  = require("alien.kernel32.memory")

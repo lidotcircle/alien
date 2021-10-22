@@ -241,6 +241,7 @@ int alien_function_gc(lua_State *L);
 int alien_function_types(lua_State *L);
 int alien_function_tostring(lua_State *L);
 int alien_function_call(lua_State *L);
+int alien_function_addr(lua_State *L);
 
 int  alien_callback_new(lua_State *L);
 void alien_callback_call(ffi_cif *cif, void *resp, void **args, void *data);

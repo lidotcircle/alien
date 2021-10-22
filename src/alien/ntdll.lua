@@ -22,5 +22,7 @@ function _M.NtClose(handle) return ntdll.NtClose(handle) end
 ntdll.NtQueryObject:types{ret = types.ntstatus, abi = abi, types.handle, types.int, types.pointer, types.size_t, types.ref_int}
 function _M.NtQueryObject(handle, info_class, buffer, size) return ntdll.NtQueryObject(handle, info_class, buffer, size, 0) end
 
+function _M.NtStatusOk(status) return status >= 0 and status < 0x8000000 end
+
 _M.raw = ntdll;
 return _M

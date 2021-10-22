@@ -2,20 +2,19 @@
 #include <funchook.h>
 
 
-#if !defined(WINDOWS) || defined(_WIN64)
-#define FFI_STDCALL FFI_DEFAULT_ABI
+#if defined(X86_WIN32)
+static const ffi_abi ffi_abis[] = { FFI_SYSV, FFI_STDCALL, FFI_THISCALL, FFI_FASTCALL, FFI_MS_CDECL, FFI_PASCAL, FFI_REGISTER, FFI_DEFAULT_ABI };
+static const char *const ffi_abi_names[] = { "sysv", "stdcall", "thiscall", "fastcall", "cdecl", "pascal", "register", "default", NULL };
+#elif defined(X86_WIN64)
+static const ffi_abi ffi_abis[] = { FFI_WIN64, FFI_GNUW64, FFI_DEFAULT_ABI };
+static const char *const ffi_abi_names[] = { "win64", "gnuw64", "default", NULL };
+#elif defined(X86_64) || (defined (__x86_64__) && defined (X86_DARWIN))
+static const ffi_abi ffi_abis[] = { FFI_UNIX64, FFI_WIN64, FFI_EFI64, FFI_GNUW64, FFI_DEFAULT_ABI };
+static const char *const ffi_abi_names[] = { "unix64", "win64", "efi64", "gnuw64", "default", NULL };
+#else
+static const ffi_abi ffi_abis[] = { FFI_SYSV, FFI_THISCALL, FFI_FASTCALL, FFI_STDCALL, FFI_PASCAL, FFI_REGISTER, FFI_MS_CDECL, FFI_DEFAULT_ABI };
+static const char *const ffi_abi_names[] = { "sysv", "thiscall", "fastcall", "stdcall", "pascal", "register", "cdecl", "default", NULL };
 #endif
-
-#if defined(__x86_64__) || defined(_M_X64)
-#define FFI_SYSV FFI_DEFAULT_ABI
-#endif
-
-#ifdef __APPLE__
-#define FFI_SYSV FFI_DEFAULT_ABI
-#endif
-
-static const ffi_abi ffi_abis[] = { FFI_DEFAULT_ABI, FFI_SYSV, FFI_STDCALL };
-static const char *const ffi_abi_names[] = { "default", "cdecl", "stdcall", NULL };
 
 
 int alien_makefunction(lua_State *L, void *lib, void *fn, char *name) {
@@ -255,6 +254,12 @@ int alien_function_call(lua_State *L) {
         }
     }
     return 1 + nrefi + nrefui + nrefc + nrefd;
+}
+
+int alien_function_addr(lua_State *L) {
+    alien_Function *af = alien_checkfunction(L, 1);
+    lua_pushnumber(L, (size_t)af->fn);
+    return 1;
 }
 
 int alien_function_gc(lua_State *L) {

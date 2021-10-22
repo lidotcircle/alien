@@ -319,6 +319,9 @@ __EXPORT int luaopen_alien_c(lua_State *L) {
     lua_pushliteral(L, "types");
     lua_pushcfunction(L, alien_function_types);
     lua_settable(L, -3);
+    lua_pushliteral(L, "addr");
+    lua_pushcfunction(L, alien_function_addr);
+    lua_settable(L, -3);
     lua_pushliteral(L, "hook");
     lua_pushcfunction(L, alien_function_hook);
     lua_settable(L, -3);

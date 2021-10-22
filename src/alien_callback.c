@@ -3,6 +3,8 @@
 
 void alien_callback_call(ffi_cif *cif, void *resp, void **args, void *data) {
     alien_Function *ac = (alien_Function *)data;
+    printf("callback called.\n");
+    printf("nparams = %d, ret_type = %d\n", ac->nparams, ac->ret_type);
     lua_State *L = ac->L;
     int i;
     lua_rawgeti(L, LUA_REGISTRYINDEX, ac->fn_ref);
@@ -36,7 +38,9 @@ void alien_callback_call(ffi_cif *cif, void *resp, void **args, void *data) {
             default: luaL_error(L, "alien: unknown parameter type in callback");
         }
     }
+    printf("callback call lua\n");
     lua_call(L, ac->nparams, 1);
+    printf("callback lua return\n");
     switch(ac->ret_type) {
         case AT_void: break;
         case AT_byte: *((int*)resp) = (signed char)lua_tointeger(L, -1); break;
@@ -68,6 +72,7 @@ void alien_callback_call(ffi_cif *cif, void *resp, void **args, void *data) {
         default: luaL_error(L, "alien: unknown return type in callback");
     }
     lua_pop(ac->L, 1);
+    printf("callback return\n");
 }
 
 int alien_callback_new(lua_State *L) {
