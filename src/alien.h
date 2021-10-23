@@ -28,13 +28,13 @@
 #include <ffi.h>
 
 /* libffi extension to support size_t and ptrdiff_t */
-#if PTRDIFF_MAX == 65535
+#if PTRDIFF_MAX == 0xFFFF
 # define ffi_type_size_t         ffi_type_uint16
 # define ffi_type_ptrdiff_t      ffi_type_sint16
-#elif PTRDIFF_MAX == 2147483647
+#elif PTRDIFF_MAX == 0xFFFFFFFF
 # define ffi_type_size_t         ffi_type_uint32
 # define ffi_type_ptrdiff_t      ffi_type_sint32
-#elif PTRDIFF_MAX == 9223372036854775807
+#elif PTRDIFF_MAX == 0xFFFFFFFFFFFFFFFF
 # define ffi_type_size_t         ffi_type_uint64
 # define ffi_type_ptrdiff_t      ffi_type_sint64
 #elif defined(_WIN64)
