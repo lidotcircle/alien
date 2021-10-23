@@ -302,6 +302,11 @@ do
   assert(chars:tostring() == "   ,,aaaadmmmnpppsss")
 end
 
+local testabi = "default"
+print("callback size", alien.sizeof("callback"))
+if (alien.platform == "windows" and alien.sizeof("callback") == 4) then
+  testabi = "stdcall"
+end
 do
   io.write(".")
   local funcs = alien.buffer(2 * alien.sizeof("callback"))
@@ -310,7 +315,7 @@ do
     table.insert(res, a + b)
   end
   local cb1 = alien.callback(callback, { "int", "int" })
-  local cb2 = alien.callback(callback, { abi = "default", "int", "int" })
+  local cb2 = alien.callback(callback, { abi = testabi, "int", "int" })
   funcs:set(1, cb1, "callback")
   funcs:set(1 + alien.sizeof("callback"), cb2, "callback")
   local f = dll._testfunc_callfuncp
@@ -422,7 +427,7 @@ do
     return a + b
   end
   local cb1 = alien.callback(callback, { "int", "int" })
-  local cb2 = alien.callback(callback, { abi = "default", "int", "int" })
+  local cb2 = alien.callback(callback, { abi = testabi, "int", "int" })
   assert(cb1(2, 3) == 5)
   assert(cb2(3, 4) == 7)
   local f = dll._testfunc_p_p
