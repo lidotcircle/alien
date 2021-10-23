@@ -28,13 +28,13 @@
 #include <ffi.h>
 
 /* libffi extension to support size_t and ptrdiff_t */
-#if PTRDIFF_MAX == 0xFFFF
+#if PTRDIFF_MAX == 65535
 # define ffi_type_size_t         ffi_type_uint16
 # define ffi_type_ptrdiff_t      ffi_type_sint16
-#elif PTRDIFF_MAX == 0xFFFFFFFF
+#elif PTRDIFF_MAX == 2147483647
 # define ffi_type_size_t         ffi_type_uint32
 # define ffi_type_ptrdiff_t      ffi_type_sint32
-#elif PTRDIFF_MAX == 0xFFFFFFFFFFFFFFFF
+#elif PTRDIFF_MAX == 9223372036854775807
 # define ffi_type_size_t         ffi_type_uint64
 # define ffi_type_ptrdiff_t      ffi_type_sint64
 #elif defined(_WIN64)
@@ -53,56 +53,16 @@
 #define __EXPORT
 #endif
 
-/* Lua 5.1 compatibility for Lua 5.2 */
-#define LUA_COMPAT_ALL
-/* Lua 5.2 compatibility for Lua 5.3 */
-#define LUA_COMPAT_5_2
+#include "alien_dep_lua.h"
 
 #define MYNAME          "alien"
 #define MYVERSION       MYNAME " library for " LUA_VERSION " / " VERSION
 #define FUNCTION_CACHE  "__library_functions_cache"
 
-#if defined(linux)
-#define PLATFORM "linux"
-#define USE_DLOPEN
-#elif defined(BSD)
-#define PLATFORM "bsd"
-#define USE_DLOPEN
-#elif defined(__APPLE__)
-#define PLATFORM "darwin"
-#define USE_DLOPEN
-#elif defined(WINDOWS)
-#define PLATFORM "windows"
-#else
-#define PLATFORM "unknown"
-#endif
-
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-
-/* Lua 5.1 compatibility for Lua 5.3 */
-#if LUA_VERSION_NUM == 503
-#define lua_objlen(L,i)		(lua_rawlen(L, (i)))
-#define luaL_register(L,n,l)	(luaL_newlib(L,l))
-#endif
-
 /* The extra indirection to these macros is required so that if the
    arguments are themselves macros, they will get expanded too.  */
 #define ALIEN__SPLICE(_s, _t)   _s##_t
 #define ALIEN_SPLICE(_s, _t)    ALIEN__SPLICE(_s, _t)
-
-#define LALLOC_FREE_STRING(lalloc, aud, s)              \
-  (lalloc)((aud), (s), sizeof(char) * (strlen(s) + 1), 0)
-
-#if LUA_VERSION_NUM >= 502
-int luaL_typerror (lua_State *L, int narg, const char *tname);
-#else
-#define lua_setuservalue lua_setfenv
-#define lua_getuservalue lua_getfenv
-
-void *luaL_testudata(lua_State *L, int ud, const char *tname);
-#endif
 
 #ifdef HAVE_ALLOCA_H
 # include <alloca.h>

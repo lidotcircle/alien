@@ -310,7 +310,7 @@ do
     table.insert(res, a + b)
   end
   local cb1 = alien.callback(callback, { "int", "int" })
-  local cb2 = alien.callback(callback, { abi = "stdcall", "int", "int" })
+  local cb2 = alien.callback(callback, { abi = "default", "int", "int" })
   funcs:set(1, cb1, "callback")
   funcs:set(1 + alien.sizeof("callback"), cb2, "callback")
   local f = dll._testfunc_callfuncp
@@ -422,7 +422,7 @@ do
     return a + b
   end
   local cb1 = alien.callback(callback, { "int", "int" })
-  local cb2 = alien.callback(callback, { abi = "stdcall", "int", "int" })
+  local cb2 = alien.callback(callback, { abi = "default", "int", "int" })
   assert(cb1(2, 3) == 5)
   assert(cb2(3, 4) == 7)
   local f = dll._testfunc_p_p
