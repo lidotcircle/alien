@@ -38,4 +38,6 @@ int main() {
     printf("youke8\n");
         return 0;
     }
+
+    return 0;
 }

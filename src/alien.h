@@ -160,13 +160,16 @@ typedef struct {
   int nparams;
   alien_Type *params;
   ffi_type **ffi_params;
+
+  int type_ref;
+  /* hook part */
+  void* hookhandle;
+  void* trampoline_fn;
+
   /* callback part */
   lua_State *L;
   void *ffi_codeloc;
   int fn_ref;
-  int is_hooked;
-  void* hookhandle;
-  void* scc;
 } alien_Function;
 
 typedef struct {

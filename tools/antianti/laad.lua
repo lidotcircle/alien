@@ -33,15 +33,26 @@ kernel32.raw.CloseHandle:hook(function (handle)
         return false
     end
 
-    local ans = ntdll.NtClose(handle)
-    print(string.format("    => %s", ntdll.NtStatusOk(ans)))
-    return ntdll.NtStatusOk(ans)
+    return kernel32.raw.CloseHandle:horigin()(handle)
+    --local ans = ntdll.NtClose(handle)
+    --print(string.format("    => %s", ntdll.NtStatusOk(ans)))
+    --return ntdll.NtStatusOk(ans)
     -- print(string.format("CloseHandle(0x%x)", handle))
-    -- return kernel32.raw.CloseHandle:horigin()(handle)
+    --local ans = kernel32.raw.CloseHandle:horigin()(handle)
+    --print(string.format("    => %s", ans))
+    --return ans
+    -- ntdll.NtClose(handle)
+    -- return true
 end)
-print(string.format("CloseHandle: 0x%x", kernel32.raw.CloseHandle:addr()))
-print(string.format("Trampoline CloseHandle: 0x%x", kernel32.raw.CloseHandle:horigin():addr()))
+--print(string.format("CloseHandle: 0x%x", kernel32.raw.CloseHandle:addr()))
+--print(string.format("Trampoline CloseHandle: 0x%x", kernel32.raw.CloseHandle:horigin():addr()))
 kernel32.raw.CloseHandle:unhook()
+
+ntdll.raw.NtClose:hook(function (handle)
+    print("hello .......................")
+    return ntdll.raw.NtClose:horigin()(handle)
+end)
+
 
 user32.raw.MessageBoxA:hook(function (hwnd, text, caption, type)
     print(string.format("MessageBox(0x%x, %s, %s, 0x%x)", hwnd, text, caption, type))
@@ -50,5 +61,5 @@ user32.raw.MessageBoxA:hook(function (hwnd, text, caption, type)
     return om(hwnd, text, caption, type)
 end)
 
-print(string.format("MessageBoxA: 0x%x", user32.raw.MessageBoxA:addr()))
-print(string.format("Trampoline MessageBoxA: 0x%x", user32.raw.MessageBoxA:horigin():addr()))
+--print(string.format("MessageBoxA: 0x%x", user32.raw.MessageBoxA:addr()))
+--print(string.format("Trampoline MessageBoxA: 0x%x", user32.raw.MessageBoxA:horigin():addr()))

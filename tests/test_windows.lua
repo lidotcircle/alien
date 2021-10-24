@@ -35,3 +35,6 @@ assert(count > 0)
 GetTickCount:unhook()
 count = GetTickCount()
 assert(count > 0)
+
+print("END")
+MessageBox(0, "what", "are", 0)

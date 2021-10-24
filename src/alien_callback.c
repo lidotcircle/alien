@@ -2,6 +2,8 @@
 
 
 void alien_callback_call(ffi_cif *cif, void *resp, void **args, void *data) {
+    printf("threadid = 0x%d\n", GetCurrentThreadId());
+
     alien_Function *ac = (alien_Function *)data;
     printf("callback called.\n");
     printf("nparams = %d, ret_type = %d\n", ac->nparams, ac->ret_type);
@@ -89,6 +91,7 @@ int alien_callback_new(lua_State *L) {
     ac->nparams = 0;
     ac->params = NULL;
     ac->ffi_params = NULL;
+    ac->type_ref = -1;
     lua_pushvalue(L, 1);
     ac->fn_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     luaL_getmetatable(L, ALIEN_FUNCTION_META);
@@ -103,8 +106,8 @@ int alien_callback_new(lua_State *L) {
     }
     ac->lib = NULL;
     ac->name = NULL;
-    ac->is_hooked = 0;
     ac->hookhandle = NULL;
+    ac->trampoline_fn = NULL;
     return 1;
 }
 

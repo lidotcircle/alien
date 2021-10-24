@@ -31,8 +31,9 @@ int alien_makefunction(lua_State *L, void *lib, void *fn, char *name) {
     af->ret_type = AT_void;
     af->params = NULL;
     af->ffi_params = NULL;
-    af->is_hooked = 0;
+    af->type_ref = -1;
     af->hookhandle = NULL;
+    af->trampoline_fn = NULL;
     return 1;
 }
 
@@ -47,35 +48,33 @@ int alien_function_types(lua_State *L) {
     ffi_status status;
     ffi_abi abi;
     alien_Function *af = alien_checkfunction(L, 1);
+    if (af->type_ref != -1) {
+        return luaL_error(L, "alien: function prototype has be defined");
+    }
+    if (!lua_istable(L, 2)) {
+        return luaL_error(L, "alien: define type failed");
+    }
+
     if (af->hookhandle) {
         return luaL_error(L, "aline: type of horigin function must be confirmed when creating");
-    }
-    if (af->is_hooked) {
-        return luaL_error(L, "aline: can't change type of hooked function, TODO");
     }
     int i, ret_type;
     void *aud;
     lua_Alloc lalloc = lua_getallocf(L, &aud);
-    if(lua_istable(L, 2)) {
-        lua_getfield(L, 2, "ret");
-        ret_type = luaL_checkoption(L, -1, "int", alien_typenames);
-        af->ret_type = ret_type;
-        af->ffi_ret_type = ffitypes[ret_type];
-        lua_getfield(L, 2, "abi");
-        abi = ffi_abis[luaL_checkoption(L, -1, "default", ffi_abi_names)];
-        lua_pop(L, 2);
-    } else {
-        ret_type = luaL_checkoption(L, 2, "int", alien_typenames);
-        af->ret_type = ret_type;
-        af->ffi_ret_type = ffitypes[ret_type];
-        abi = FFI_DEFAULT_ABI;
-    }
+    lua_getfield(L, 2, "ret");
+    ret_type = luaL_checkoption(L, -1, "int", alien_typenames);
+    af->ret_type = ret_type;
+    af->ffi_ret_type = ffitypes[ret_type];
+    lua_getfield(L, 2, "abi");
+    abi = ffi_abis[luaL_checkoption(L, -1, "default", ffi_abi_names)];
+    lua_pop(L, 2);
+
     if(af->params) {
         lalloc(aud, af->params, sizeof(alien_Type) * af->nparams, 0);
         lalloc(aud, af->ffi_params, sizeof(ffi_type *) * af->nparams, 0);
         af->params = NULL; af->ffi_params = NULL;
     }
-    af->nparams = lua_istable(L, 2) ? lua_objlen(L, 2) : lua_gettop(L) - 2;
+    af->nparams = lua_objlen(L, 2);
     if(af->nparams > 0) {
         af->ffi_params = (ffi_type **)lalloc(aud, NULL, 0, sizeof(ffi_type *) * af->nparams);
         if(!af->ffi_params) return luaL_error(L, "alien: out of memory");
@@ -85,22 +84,15 @@ int alien_function_types(lua_State *L) {
         af->ffi_params = NULL;
         af->params = NULL;
     }
-    if(lua_istable(L, 2)) {
-        for(i = 0; i < af->nparams; i++) {
-            int type;
-            lua_rawgeti(L, 2, i + 1);
-            type = luaL_checkoption(L, -1, "int", alien_typenames);
-            af->params[i] = type;
-            af->ffi_params[i] = ffitypes[type];
-            lua_pop(L, 1);
-        }
-    } else {
-        for(i = 0; i < af->nparams; i++) {
-            int type = luaL_checkoption(L, i + 3, "int", alien_typenames);
-            af->ffi_params[i] = ffitypes[type];
-            af->params[i] = type;
-        }
+    for(i = 0; i < af->nparams; i++) {
+        int type;
+        lua_rawgeti(L, 2, i + 1);
+        type = luaL_checkoption(L, -1, "int", alien_typenames);
+        af->params[i] = type;
+        af->ffi_params[i] = ffitypes[type];
+        lua_pop(L, 1);
     }
+
     status = ffi_prep_cif(&(af->cif), abi, af->nparams,
             af->ffi_ret_type,
             af->ffi_params);
@@ -110,6 +102,9 @@ int alien_function_types(lua_State *L) {
         status = ffi_prep_closure_loc(af->fn, &(af->cif), &alien_callback_call, af, af->ffi_codeloc);
         if(status != FFI_OK) return luaL_error(L, "alien: cannot create callback");
     }
+
+    lua_pushvalue(L, 2);
+    af->type_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     return 0;
 }
 
@@ -264,6 +259,7 @@ int alien_function_addr(lua_State *L) {
 
 int alien_function_gc(lua_State *L) {
     alien_Function *af = alien_checkfunction(L, 1);
+    printf("function gc %s\n", af->name);
     void *aud;
     lua_Alloc lalloc = lua_getallocf(L, &aud);
     if(af->name) LALLOC_FREE_STRING(lalloc, aud, af->name);
@@ -273,13 +269,13 @@ int alien_function_gc(lua_State *L) {
         funchook_uninstall(af->hookhandle, 0);
         funchook_destroy(af->hookhandle);
         af->hookhandle = NULL;
-        af->fn = af->scc;
-        af->scc = NULL;
     }
+    /*
     if(af->fn_ref) {
         luaL_unref(af->L, LUA_REGISTRYINDEX, af->fn_ref);
         ffi_closure_free(af->fn);
     }
+    */
     return 0;
 }
 
