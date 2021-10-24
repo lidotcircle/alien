@@ -2,6 +2,10 @@
 /* Author: Fabio Mascarenhas */
 /* License: MIT/X11 */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "config.h"
 
 #ifdef WIN32  
@@ -229,3 +233,6 @@ int b_unpack (lua_State *L);
 int b_size (lua_State *L);
 int b_offset (lua_State *L);
 
+#ifdef __cplusplus
+}
+#endif

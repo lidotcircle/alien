@@ -39,7 +39,7 @@ target_sources(alien PRIVATE
     src/alien_hook.c
     src/alien_buffer.c
     src/alien_struct.c
-    src/alien_callback.c
+    src/alien_callback.cpp
     src/alien_function.c
     src/utils.c
     )

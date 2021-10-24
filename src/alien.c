@@ -370,6 +370,10 @@ __EXPORT int luaopen_alien_c(lua_State *L) {
     lua_newtable(L);
     hook_function_table = luaL_ref(L, LUA_REGISTRYINDEX);
 
+    /* callback thread mutex */
+    lua_pushlightuserdata(L, NULL);
+    lua_setglobal(L, "callback_mutex");
+
     /* Register main library */
     luaL_register(L, "alien", alienlib);
     /* Version */

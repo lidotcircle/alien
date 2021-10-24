@@ -10,56 +10,29 @@ local ObjectHandleInfo_t = alien.defstruct{
     { "ProtectFromClose", types.char}
 }
 
-
 kernel32.raw.CloseHandle:hook(function (handle)
     if (handle == -1) then
-        print("close -1 handle")
         return false
     end
 
-    print(string.format("CloseHandle(0x%x)", handle))
     local info = ObjectHandleInfo_t:new()
     info.Inherit = false
     info.ProtectFromClose = false
     local status = ntdll.NtQueryObject(handle, 4, info(), 2)
 
     if (false and info.ProtectFromClose) then
-        print("    protect")
         return 0xC0000235
     end
 
     if (status < 0 or status >= 0x80000000) then
-        print(string.format("    => false    bad handle"))
         return false
     end
 
     return kernel32.raw.CloseHandle:horigin()(handle)
-    --local ans = ntdll.NtClose(handle)
-    --print(string.format("    => %s", ntdll.NtStatusOk(ans)))
-    --return ntdll.NtStatusOk(ans)
-    -- print(string.format("CloseHandle(0x%x)", handle))
-    --local ans = kernel32.raw.CloseHandle:horigin()(handle)
-    --print(string.format("    => %s", ans))
-    --return ans
-    -- ntdll.NtClose(handle)
-    -- return true
 end)
---print(string.format("CloseHandle: 0x%x", kernel32.raw.CloseHandle:addr()))
---print(string.format("Trampoline CloseHandle: 0x%x", kernel32.raw.CloseHandle:horigin():addr()))
-kernel32.raw.CloseHandle:unhook()
-
-ntdll.raw.NtClose:hook(function (handle)
-    print("hello .......................")
-    return ntdll.raw.NtClose:horigin()(handle)
-end)
-
 
 user32.raw.MessageBoxA:hook(function (hwnd, text, caption, type)
     print(string.format("MessageBox(0x%x, %s, %s, 0x%x)", hwnd, text, caption, type))
     local om = user32.raw.MessageBoxA:horigin()
-    print(string.format("MessageBoxA Trampoline 0x%x", om:addr()))
     return om(hwnd, text, caption, type)
 end)
-
---print(string.format("MessageBoxA: 0x%x", user32.raw.MessageBoxA:addr()))
---print(string.format("Trampoline MessageBoxA: 0x%x", user32.raw.MessageBoxA:horigin():addr()))
