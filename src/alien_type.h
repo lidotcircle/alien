@@ -1,25 +1,15 @@
 #ifndef _ALIEN_TYPE_H_
 #define _ALIEN_TYPE_H_
 
+#include <lua.hpp>
 #include <ffi.h>
 
 
-class alien_type {
-    protected:
-        ffi_abi abi;
-        ffi_type* pffi_type;
+int alien_types_init(lua_State* L);
+int alien_types_register_basic(lua_State* L, const char* tname, ffi_type* ffitype);
 
-    public:
-        alien_type(ffi_abi abi, ffi_type*);
-
-        alien_type() = delete;
-        alien_type(const alien_type&) = delete;
-        alien_type(alien_type&&) = delete;
-        alien_type& operator=(alien_type&&) = delete;
-        alien_type& operator=(const alien_type&) = delete;
-
-        virtual size_t __sizeof();
-        virtual ~alien_type();
-};
+int alien_types_defstruct(lua_State* L);
+int alien_types_defunion(lua_State* L);
+int alien_types_alias(lua_State* L);
 
 #endif // _ALIEN_TYPE_H_

@@ -218,22 +218,22 @@ int alien_function_call(lua_State *L) {
     }
     pret = NULL;
     switch(af->ret_type) {
-        case AT_void: ffi_call(cif, static_cast<void(*)()>(af->fn), NULL, args); lua_pushnil(L); break;
-        case AT_byte: ffi_call(cif, static_cast<void(*)()>(af->fn), &iret, args); lua_pushnumber(L, (signed char)iret); break;
-        case AT_char: ffi_call(cif, static_cast<void(*)()>(af->fn), &iret, args); lua_pushnumber(L, (unsigned char)iret); break;
-        case AT_short: ffi_call(cif, static_cast<void(*)()>(af->fn), &iret, args); lua_pushnumber(L, (short)iret); break;
-        case AT_ushort: ffi_call(cif, static_cast<void(*)()>(af->fn), &iret, args); lua_pushnumber(L, (unsigned short)iret); break;
-        case AT_int: ffi_call(cif, static_cast<void(*)()>(af->fn), &iret, args); lua_pushnumber(L, iret); break;
-        case AT_uint: ffi_call(cif, static_cast<void(*)()>(af->fn), &iret, args); lua_pushnumber(L, (unsigned int)iret); break;
-        case AT_long: ffi_call(cif, static_cast<void(*)()>(af->fn), &lret, args); lua_pushnumber(L, lret); break;
-        case AT_ulong: ffi_call(cif, static_cast<void(*)()>(af->fn), &ulret, args); lua_pushnumber(L, (unsigned long)ulret); break;
-        case AT_ptrdiff_t: ffi_call(cif, static_cast<void(*)()>(af->fn), &lret, args); lua_pushnumber(L, lret); break;
-        case AT_size_t: ffi_call(cif, static_cast<void(*)()>(af->fn), &ulret, args); lua_pushnumber(L, (size_t)ulret); break;
-        case AT_float: ffi_call(cif, static_cast<void(*)()>(af->fn), &fret, args); lua_pushnumber(L, fret); break;
-        case AT_double: ffi_call(cif, static_cast<void(*)()>(af->fn), &dret, args); lua_pushnumber(L, dret); break;
-        case AT_string: ffi_call(cif, static_cast<void(*)()>(af->fn), &pret, args);
+        case AT_void: ffi_call(cif, (void(*)())(af->fn), NULL, args); lua_pushnil(L); break;
+        case AT_byte: ffi_call(cif, (void(*)())(af->fn), &iret, args); lua_pushnumber(L, (signed char)iret); break;
+        case AT_char: ffi_call(cif, (void(*)())(af->fn), &iret, args); lua_pushnumber(L, (unsigned char)iret); break;
+        case AT_short: ffi_call(cif, (void(*)())(af->fn), &iret, args); lua_pushnumber(L, (short)iret); break;
+        case AT_ushort: ffi_call(cif, (void(*)())(af->fn), &iret, args); lua_pushnumber(L, (unsigned short)iret); break;
+        case AT_int: ffi_call(cif, (void(*)())(af->fn), &iret, args); lua_pushnumber(L, iret); break;
+        case AT_uint: ffi_call(cif, (void(*)())(af->fn), &iret, args); lua_pushnumber(L, (unsigned int)iret); break;
+        case AT_long: ffi_call(cif, (void(*)())(af->fn), &lret, args); lua_pushnumber(L, lret); break;
+        case AT_ulong: ffi_call(cif, (void(*)())(af->fn), &ulret, args); lua_pushnumber(L, (unsigned long)ulret); break;
+        case AT_ptrdiff_t: ffi_call(cif, (void(*)())(af->fn), &lret, args); lua_pushnumber(L, lret); break;
+        case AT_size_t: ffi_call(cif, (void(*)())(af->fn), &ulret, args); lua_pushnumber(L, (size_t)ulret); break;
+        case AT_float: ffi_call(cif, (void(*)())(af->fn), &fret, args); lua_pushnumber(L, fret); break;
+        case AT_double: ffi_call(cif, (void(*)())(af->fn), &dret, args); lua_pushnumber(L, dret); break;
+        case AT_string: ffi_call(cif, (void(*)())(af->fn), &pret, args);
                         if (pret) lua_pushstring(L, (const char *)pret); else lua_pushnil(L); break;
-        case AT_pointer: ffi_call(cif, static_cast<void(*)()>(af->fn), &pret, args);
+        case AT_pointer: ffi_call(cif, (void(*)())(af->fn), &pret, args);
                          if (pret) lua_pushlightuserdata(L, pret); else lua_pushnil(L); break;
         default:
                          return luaL_error(L, "alien: unknown return type (function %s)", af->name ?

@@ -41,7 +41,7 @@ target_sources(alien PRIVATE
     src/alien_callback.cpp
     src/alien_function.cpp
     src/alien_struct.cpp
-    src/alien_type.cpp
+    src/alien_type_basic.cpp
     src/alien_type_struct.cpp
     src/alien_type_union.cpp
     src/utils.cpp

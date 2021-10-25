@@ -144,13 +144,15 @@ int alien_buffer_realloc(lua_State *L) {
 }
 
 int alien_buffer_get(lua_State *L) {
-    static const void* funcs[] = {&alien_buffer_tostring,
-        &alien_buffer_topointer,
-        &alien_buffer_tooffset,
-        &alien_buffer_strlen,
-        &alien_buffer_get,
-        &alien_buffer_set,
-        &alien_buffer_realloc};
+    static const void* funcs[] = {
+        (void*)&alien_buffer_tostring,
+        (void*)&alien_buffer_topointer,
+        (void*)&alien_buffer_tooffset,
+        (void*)&alien_buffer_strlen,
+        (void*)&alien_buffer_get,
+        (void*)&alien_buffer_set,
+        (void*)&alien_buffer_realloc
+    };
     static const char *const funcnames[] = { "tostring", "topointer", "tooffset", "strlen", "get", "set", "realloc", NULL };
     char *b = alien_checkbuffer(L, 1)->p;
     if(lua_type(L, 2) == LUA_TSTRING) {
@@ -187,7 +189,7 @@ int alien_buffer_get(lua_State *L) {
                             break;
             case AT_callback:
                             p = *((void**)&b[offset]);
-                            p ? alien_makefunction(L, NULL, p, NULL) : lua_pushnil(L);
+                            if (p) alien_makefunction(L, NULL, p, NULL); else lua_pushnil(L);
                             break;
             default:
                             return luaL_error(L, "alien: unknown type in buffer:get");

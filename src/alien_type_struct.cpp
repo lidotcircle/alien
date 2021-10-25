@@ -5,7 +5,7 @@
 using namespace std;
 
 
-alien_type_struct::alien_type_struct(ffi_abi abi, const vector<pair<string, alien_type*>>& members): alien_type(abi, nullptr) {
+alien_type_struct::alien_type_struct(const std::string& t, ffi_abi abi, const vector<pair<string, alien_type*>>& members): alien_type(t, abi, nullptr) {
     this->pffi_type = new ffi_type();
     this->pffi_type->type = FFI_TYPE_STRUCT;
     this->pffi_type->elements = new ffi_type*[members.size() + 1];
@@ -15,7 +15,7 @@ alien_type_struct::alien_type_struct(ffi_abi abi, const vector<pair<string, alie
 
     for(size_t i=0;i<members.size();i++) {
         auto& memtype = members[i];
-        this->pffi_type->elements[i] = memtype.second->pffi_type;
+        this->pffi_type->elements[i] = memtype.second->ffitype();
     }
     this->pffi_type->elements[members.size()] = nullptr;
 

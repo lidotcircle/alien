@@ -43,7 +43,9 @@ function_list* lf_load(const void* vlib)
     return fl;
 }
 #elif defined(linux)
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+# define _GNU_SOURCE
+#endif
 #include <link.h>
 #include <dlfcn.h>
 
@@ -51,7 +53,7 @@ function_list* lf_load(const void* lib)
 {
     struct link_map* mlib = (struct link_map*)lib;
     if (lib == NULL)
-        mlib = dlopen(NULL, RTLD_NOW);
+        mlib = static_cast<link_map*>(dlopen(NULL, RTLD_NOW));
 
     ElfW(Sym)* symtab = NULL;
     char* strtab = NULL;
