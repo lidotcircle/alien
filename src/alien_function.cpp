@@ -26,7 +26,7 @@ int alien_makefunction(lua_State *L, void *lib, void *fn, char *name) {
     af->fn = fn;
     af->fn_ref = 0;
     af->name = name;
-    af->lib = lib;
+    af->lib = static_cast<alien_Library*>(lib);
     af->nparams = 0;
     af->ret_type = AT_void;
     af->params = NULL;
@@ -63,7 +63,7 @@ int alien_function_types(lua_State *L) {
     lua_Alloc lalloc = lua_getallocf(L, &aud);
     lua_getfield(L, 2, "ret");
     ret_type = luaL_checkoption(L, -1, "int", alien_typenames);
-    af->ret_type = ret_type;
+    af->ret_type = static_cast<alien_Type>(ret_type);
     af->ffi_ret_type = ffitypes[ret_type];
     lua_getfield(L, 2, "abi");
     abi = ffi_abis[luaL_checkoption(L, -1, "default", ffi_abi_names)];
@@ -88,7 +88,7 @@ int alien_function_types(lua_State *L) {
         int type;
         lua_rawgeti(L, 2, i + 1);
         type = luaL_checkoption(L, -1, "int", alien_typenames);
-        af->params[i] = type;
+        af->params[i] = static_cast<alien_Type>(type);
         af->ffi_params[i] = ffitypes[type];
         lua_pop(L, 1);
     }
@@ -99,7 +99,7 @@ int alien_function_types(lua_State *L) {
     if(status != FFI_OK)
         return luaL_error(L, "alien: error in libffi preparation");
     if(af->fn_ref) {
-        status = ffi_prep_closure_loc(af->fn, &(af->cif), &alien_callback_call, af, af->ffi_codeloc);
+        status = ffi_prep_closure_loc(static_cast<ffi_closure*>(af->fn), &(af->cif), &alien_callback_call, af, af->ffi_codeloc);
         if(status != FFI_OK) return luaL_error(L, "alien: cannot create callback");
     }
 
@@ -125,7 +125,7 @@ int alien_function_call(lua_State *L) {
     if(nargs != af->nparams)
         return luaL_error(L, "alien: too %s arguments (function %s)", nargs < af->nparams ? "few" : "many",
                 af->name ? af->name : "anonymous");
-    if(nargs > 0) args = alloca(sizeof(void*) * nargs);
+    if(nargs > 0) args = static_cast<void**>(alloca(sizeof(void*) * nargs));
     for(i = 0; i < nargs; i++) {
         void *arg;
         int j = i + 2;
@@ -169,7 +169,7 @@ int alien_function_call(lua_State *L) {
             case AT_string:
                 arg = alloca(sizeof(char*));
                 if(lua_isuserdata(L, j))
-                    *((char**)arg) = alien_touserdata(L, j);
+                    *((char**)arg) = static_cast<char*>(alien_touserdata(L, j));
                 else
                     *((const char**)arg) = lua_isnil(L, j) ? NULL : lua_tostring(L, j);
                 break;
@@ -179,25 +179,25 @@ int alien_function_call(lua_State *L) {
                 break;
             case AT_refchar:
                 arg = alloca(sizeof(char *));
-                *((char **)arg) = alloca(sizeof(char));
+                *((char **)arg) = static_cast<char*>(alloca(sizeof(char)));
                 **((char **)arg) = (char)lua_tonumber(L, j);
                 nrefc++;
                 break;
             case AT_refint:
                 arg = alloca(sizeof(int *));
-                *((int **)arg) = alloca(sizeof(int));
+                *((int **)arg) = static_cast<int*>(alloca(sizeof(int)));
                 **((int **)arg) = (int)lua_tonumber(L, j);
                 nrefi++;
                 break;
             case AT_refuint:
                 arg = alloca(sizeof(unsigned int *));
-                *((unsigned int **)arg) = alloca(sizeof(unsigned int));
+                *((unsigned int **)arg) = static_cast<unsigned int*>(alloca(sizeof(unsigned int)));
                 **((unsigned int **)arg) = (unsigned int)lua_tonumber(L, j);
                 nrefui++;
                 break;
             case AT_refdouble:
                 arg = alloca(sizeof(double *));
-                *((double **)arg) = alloca(sizeof(double));
+                *((double **)arg) = static_cast<double*>(alloca(sizeof(double)));
                 **((double **)arg) = (double)lua_tonumber(L, j);
                 nrefd++;
                 break;
@@ -218,22 +218,22 @@ int alien_function_call(lua_State *L) {
     }
     pret = NULL;
     switch(af->ret_type) {
-        case AT_void: ffi_call(cif, af->fn, NULL, args); lua_pushnil(L); break;
-        case AT_byte: ffi_call(cif, af->fn, &iret, args); lua_pushnumber(L, (signed char)iret); break;
-        case AT_char: ffi_call(cif, af->fn, &iret, args); lua_pushnumber(L, (unsigned char)iret); break;
-        case AT_short: ffi_call(cif, af->fn, &iret, args); lua_pushnumber(L, (short)iret); break;
-        case AT_ushort: ffi_call(cif, af->fn, &iret, args); lua_pushnumber(L, (unsigned short)iret); break;
-        case AT_int: ffi_call(cif, af->fn, &iret, args); lua_pushnumber(L, iret); break;
-        case AT_uint: ffi_call(cif, af->fn, &iret, args); lua_pushnumber(L, (unsigned int)iret); break;
-        case AT_long: ffi_call(cif, af->fn, &lret, args); lua_pushnumber(L, lret); break;
-        case AT_ulong: ffi_call(cif, af->fn, &ulret, args); lua_pushnumber(L, (unsigned long)ulret); break;
-        case AT_ptrdiff_t: ffi_call(cif, af->fn, &lret, args); lua_pushnumber(L, lret); break;
-        case AT_size_t: ffi_call(cif, af->fn, &ulret, args); lua_pushnumber(L, (size_t)ulret); break;
-        case AT_float: ffi_call(cif, af->fn, &fret, args); lua_pushnumber(L, fret); break;
-        case AT_double: ffi_call(cif, af->fn, &dret, args); lua_pushnumber(L, dret); break;
-        case AT_string: ffi_call(cif, af->fn, &pret, args);
+        case AT_void: ffi_call(cif, static_cast<void(*)()>(af->fn), NULL, args); lua_pushnil(L); break;
+        case AT_byte: ffi_call(cif, static_cast<void(*)()>(af->fn), &iret, args); lua_pushnumber(L, (signed char)iret); break;
+        case AT_char: ffi_call(cif, static_cast<void(*)()>(af->fn), &iret, args); lua_pushnumber(L, (unsigned char)iret); break;
+        case AT_short: ffi_call(cif, static_cast<void(*)()>(af->fn), &iret, args); lua_pushnumber(L, (short)iret); break;
+        case AT_ushort: ffi_call(cif, static_cast<void(*)()>(af->fn), &iret, args); lua_pushnumber(L, (unsigned short)iret); break;
+        case AT_int: ffi_call(cif, static_cast<void(*)()>(af->fn), &iret, args); lua_pushnumber(L, iret); break;
+        case AT_uint: ffi_call(cif, static_cast<void(*)()>(af->fn), &iret, args); lua_pushnumber(L, (unsigned int)iret); break;
+        case AT_long: ffi_call(cif, static_cast<void(*)()>(af->fn), &lret, args); lua_pushnumber(L, lret); break;
+        case AT_ulong: ffi_call(cif, static_cast<void(*)()>(af->fn), &ulret, args); lua_pushnumber(L, (unsigned long)ulret); break;
+        case AT_ptrdiff_t: ffi_call(cif, static_cast<void(*)()>(af->fn), &lret, args); lua_pushnumber(L, lret); break;
+        case AT_size_t: ffi_call(cif, static_cast<void(*)()>(af->fn), &ulret, args); lua_pushnumber(L, (size_t)ulret); break;
+        case AT_float: ffi_call(cif, static_cast<void(*)()>(af->fn), &fret, args); lua_pushnumber(L, fret); break;
+        case AT_double: ffi_call(cif, static_cast<void(*)()>(af->fn), &dret, args); lua_pushnumber(L, dret); break;
+        case AT_string: ffi_call(cif, static_cast<void(*)()>(af->fn), &pret, args);
                         if (pret) lua_pushstring(L, (const char *)pret); else lua_pushnil(L); break;
-        case AT_pointer: ffi_call(cif, af->fn, &pret, args);
+        case AT_pointer: ffi_call(cif, static_cast<void(*)()>(af->fn), &pret, args);
                          if (pret) lua_pushlightuserdata(L, pret); else lua_pushnil(L); break;
         default:
                          return luaL_error(L, "alien: unknown return type (function %s)", af->name ?
@@ -266,8 +266,8 @@ int alien_function_gc(lua_State *L) {
     if(af->params) lalloc(aud, af->params, sizeof(alien_Type) * af->nparams, 0);
     if(af->ffi_params) lalloc(aud, af->ffi_params, sizeof(ffi_type *) * af->nparams, 0);
     if(af->hookhandle) {
-        funchook_uninstall(af->hookhandle, 0);
-        funchook_destroy(af->hookhandle);
+        funchook_uninstall(static_cast<funchook_t*>(af->hookhandle), 0);
+        funchook_destroy(static_cast<funchook_t*>(af->hookhandle));
         af->hookhandle = NULL;
     }
     /*

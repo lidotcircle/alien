@@ -3,7 +3,7 @@
 #include <mutex>
 
 
-extern "C" void alien_callback_call(ffi_cif *cif, void *resp, void **args, void *data) {
+void alien_callback_call(ffi_cif *cif, void *resp, void **args, void *data) {
     alien_Function *ac = (alien_Function *)data;
     lua_State *L = ac->L;
 
@@ -83,7 +83,7 @@ extern "C" void alien_callback_call(ffi_cif *cif, void *resp, void **args, void 
     lua_pop(ac->L, 1);
 }
 
-extern "C" int alien_callback_new(lua_State *L) {
+int alien_callback_new(lua_State *L) {
     alien_Function *ac;
     ffi_status status;
     luaL_checktype(L, 1, LUA_TFUNCTION);

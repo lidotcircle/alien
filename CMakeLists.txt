@@ -33,15 +33,18 @@ set_target_properties(alien PROPERTIES
     OUTPUT_NAME alien_c
     PREFIX "")
 target_sources(alien PRIVATE
-    src/alien.c
-    src/alien_library.c
-    src/alien_lua_util.c
-    src/alien_hook.c
-    src/alien_buffer.c
-    src/alien_struct.c
+    src/alien.cpp
+    src/alien_library.cpp
+    src/alien_lua_util.cpp
+    src/alien_hook.cpp
+    src/alien_buffer.cpp
     src/alien_callback.cpp
-    src/alien_function.c
-    src/utils.c
+    src/alien_function.cpp
+    src/alien_struct.cpp
+    src/alien_type.cpp
+    src/alien_type_struct.cpp
+    src/alien_type_union.cpp
+    src/utils.cpp
     )
 target_include_directories(alien PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(alien PRIVATE lua)

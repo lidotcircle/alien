@@ -21,9 +21,7 @@
 #define PLATFORM "unknown"
 #endif
 
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
+#include "lua.hpp"
 
 /* Lua 5.1 compatibility for Lua 5.3 */
 #if LUA_VERSION_NUM == 503

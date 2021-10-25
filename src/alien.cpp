@@ -286,7 +286,7 @@ static const luaL_Reg alienlib[] = {
     {NULL, NULL},
 };
 
-__EXPORT int luaopen_alien_c(lua_State *L) {
+extern "C" __EXPORT int luaopen_alien_c(lua_State *L) {
     alien_Library *al;
 
 #ifdef WINDOWS

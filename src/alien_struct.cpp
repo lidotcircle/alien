@@ -323,7 +323,7 @@ int b_unpack (lua_State *L) {
   size_t ld, pos;
   const char *data;
   if(lua_isuserdata(L, 2)) {
-    data = alien_touserdata(L, 2);
+    data = static_cast<char*>(alien_touserdata(L, 2));
     ld = (size_t)luaL_checkinteger(L, 3);
     pos = luaL_optint(L, 4, 1) - 1;
   } else {

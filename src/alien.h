@@ -2,9 +2,6 @@
 /* Author: Fabio Mascarenhas */
 /* License: MIT/X11 */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #include "config.h"
 
@@ -12,6 +9,12 @@ extern "C" {
 # ifndef WINDOWS
 #  define WINDOWS
 # endif
+#endif
+
+#ifdef WINDOWS
+#define __EXPORT __declspec(dllexport)
+#else
+#define __EXPORT
 #endif
 
 #ifdef WINDOWS
@@ -51,11 +54,6 @@ extern "C" {
  #error "ptrdiff_t size not supported"
 #endif
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-#define __EXPORT __declspec(dllexport)
-#else
-#define __EXPORT
-#endif
 
 #include "alien_dep_lua.h"
 
@@ -113,7 +111,7 @@ typedef struct { char c; void *x; } s_void_p;
 /*              NAME          BASE       SIZEOF                 ALIGNMENT
                 ====          ====       ======                 =========       */
 #define type_map \
-        MENTRY( "void",       void,      void,                  AT_NONE         ) \
+        MENTRY( "void",       void,      char,                  AT_NONE         ) \
         MENTRY( "byte",       byte,      unsigned char,         AT_CHAR         ) \
         MENTRY( "char",       char,      char,                  AT_CHAR         ) \
         MENTRY( "short",      short,     short,                 AT_SHORT        ) \
@@ -232,7 +230,3 @@ int b_pack (lua_State *L);
 int b_unpack (lua_State *L);
 int b_size (lua_State *L);
 int b_offset (lua_State *L);
-
-#ifdef __cplusplus
-}
-#endif

@@ -29,10 +29,10 @@ int alien_buffer_new(lua_State *L) {
         }
         p = b;
     }
-    ud = lua_newuserdata(L, sizeof(alien_Buffer));
+    ud = static_cast<alien_Buffer*>(lua_newuserdata(L, sizeof(alien_Buffer)));
     if (!ud)
         return luaL_error(L, "alien: cannot allocate buffer");
-    ud->p = p;
+    ud->p = static_cast<char*>(p);
     ud->size = size;
     luaL_getmetatable(L, ALIEN_BUFFER_META);
     lua_setmetatable(L, -2);
@@ -87,7 +87,7 @@ int alien_buffer_tooffset(lua_State *L) {
     char *b = alien_checkbuffer(L, 1)->p;
     char *p;
     luaL_checktype(L, 2, LUA_TLIGHTUSERDATA);
-    p = lua_touserdata(L, 2);
+    p = (char*)lua_touserdata(L, 2);
     /* It would be nice to do a bounds check, but comparing pointers
        that don't point to the same object has undefined behavior. */
     lua_pushinteger(L, p - b + 1);

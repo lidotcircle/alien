@@ -16,7 +16,7 @@ static int get_hook_entry(lua_State* L, const char* lib, const char* name) {
         a = strlen(lib);
     if (name != NULL)
         b = strlen(name);
-    char* ename = lalloc(aud, NULL, 0, a + b + 2);
+    char* ename = (char*)lalloc(aud, NULL, 0, a + b + 2);
     if (ename == NULL)
         return luaL_error(L, "aline: out of memory");
     if (a > 0)
@@ -100,10 +100,10 @@ int alien_function_unhook(lua_State* L) {
         return luaL_error(L, "aline: function hasn't hooked");
     }
 
-    if (funchook_uninstall(oac->hookhandle, 0) != FUNCHOOK_ERROR_SUCCESS) {
+    if (funchook_uninstall(static_cast<funchook_t*>(oac->hookhandle), 0) != FUNCHOOK_ERROR_SUCCESS) {
         return luaL_error(L, "aline: unhook failed");
     }
-    funchook_destroy(oac->hookhandle);
+    funchook_destroy(static_cast<funchook_t*>(oac->hookhandle));
     oac->trampoline_fn = NULL;
     oac->hookhandle = NULL;
 
