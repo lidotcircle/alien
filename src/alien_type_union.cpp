@@ -5,7 +5,11 @@
 using namespace std;
 
 
-alien_type_union::alien_type_union(const std::string& t, ffi_abi abi, const vector<pair<string, alien_type*>>& members): alien_type(t, abi, nullptr) {
+alien_type_union::alien_type_union(const std::string& t, 
+                                   ffi_abi abi, 
+                                   const vector<pair<string, alien_type*>>& members):
+    alien_type(t), abi(abi) 
+{
     this->pffi_type = new ffi_type();
     this->pffi_type->type = FFI_TYPE_STRUCT;
     this->pffi_type->size = 0;
@@ -31,6 +35,10 @@ alien_type_union::~alien_type_union() {
     this->pffi_type = nullptr;
 }
 
+alien_value* alien_type_union::fromLua(lua_State* L, int idx) const {
+    // TODO
+}
+
 size_t alien_type_union::sizeof_member(const std::string& member) {
     for (auto& m: this->members) {
         if (m.first == member)
@@ -39,3 +47,5 @@ size_t alien_type_union::sizeof_member(const std::string& member) {
 
     return 0;
 }
+
+bool alien_type_union::is_union() const { return true; }

@@ -1,30 +1,31 @@
-#ifndef _ALIEN_TYPE_BASIC_H_
-#define _ALIEN_TYPE_BASIC_H_
+#ifndef _alien_type_basic_BASIC_H_
+#define _alien_type_basic_BASIC_H_
 
 #include <ffi.h>
 #include <string>
+#include <lua.hpp>
+#include "alien_type.h"
 
-
-class alien_type {
-    protected:
+class alien_type_basic: public alien_type {
+    private:
         ffi_abi abi;
         ffi_type* pffi_type;
-        std::string type_name;
 
     public:
-        alien_type(const std::string& type_name, ffi_abi abi, ffi_type*);
+        alien_type_basic(const std::string& type_name, ffi_abi abi, ffi_type*);
 
-        alien_type() = delete;
-        alien_type(const alien_type&) = delete;
-        alien_type(alien_type&&) = delete;
-        alien_type& operator=(alien_type&&) = delete;
-        alien_type& operator=(const alien_type&) = delete;
+        virtual ffi_type* ffitype() override;
+        virtual alien_value* fromLua(lua_State* L, int idx) const override;
 
-        ffi_type* ffitype();
-        const std::string& __typename() const;
+        virtual bool is_integer() const override;
+        virtual bool is_signed()  const override;
+        virtual bool is_float()   const override;
+        virtual bool is_double()  const override;
+        virtual bool is_rawpointer() const override;
+        virtual bool is_void() const override;
+        virtual bool is_basic()   const override;
 
-        virtual size_t __sizeof() const;
-        virtual ~alien_type();
+        virtual ~alien_type_basic() override;
 };
 
-#endif // _ALIEN_TYPE_BASIC_H_
+#endif // _alien_type_basic_BASIC_H_

@@ -5,7 +5,11 @@
 using namespace std;
 
 
-alien_type_struct::alien_type_struct(const std::string& t, ffi_abi abi, const vector<pair<string, alien_type*>>& members): alien_type(t, abi, nullptr) {
+alien_type_struct::alien_type_struct(const std::string& t,
+                                     ffi_abi abi,
+                                     const vector<pair<string, alien_type*>>& members):
+    alien_type(t), abi(abi)
+{
     this->pffi_type = new ffi_type();
     this->pffi_type->type = FFI_TYPE_STRUCT;
     this->pffi_type->elements = new ffi_type*[members.size() + 1];
@@ -47,6 +51,14 @@ bool alien_type_struct::has_member(const std::string& member) {
     return false;
 }
 
+alien_value* alien_type_struct::fromLua(lua_State* L, int idx) const {
+    // TODO
+}
+
+ffi_type* alien_type_struct::ffitype() {
+    return this->pffi_type;
+}
+
 size_t alien_type_struct::__offsetof(const std::string& member) {
     int n = -1;
     for (size_t i=0;i<this->members.size();i++) {
@@ -58,3 +70,6 @@ size_t alien_type_struct::__offsetof(const std::string& member) {
 
     return this->member_offs[n];
 }
+
+bool alien_type_struct::is_struct() const { return true; }
+
