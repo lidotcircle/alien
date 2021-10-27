@@ -46,7 +46,6 @@ class alien_type {
 
 /** initialization routine, call from openlib_*() function */
 int alien_types_init(lua_State* L);
-int alien_types_register_basic(lua_State* L, const char* tname, ffi_type* ffitype);
 
 /** lua c functions */
 int alien_types_defstruct(lua_State* L);

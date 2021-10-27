@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <vector>
 #include <string>
+#include <ffi.h>
 using namespace std;
 
 #define ALIEN_TYPE_META "alien_type_metatable"
@@ -32,19 +33,30 @@ using namespace std;
 #endif
 
 #define basic_type_map \
-        MENTRY( void      ) \
-        MENTRY( uint8_t   ) \
-        MENTRY( int8_t    ) \
-        MENTRY( uint16_t  ) \
-        MENTRY( int16_t   ) \
-        MENTRY( uint32_t  ) \
-        MENTRY( int32_t   ) \
-        MENTRY( uint64_t  ) \
-        MENTRY( int64_t   ) \
-        MENTRY( size_t    ) \
-        MENTRY( ptrdiff_t ) \
-        MENTRY( float     ) \
-        MENTRY( double    ) \
+    MENTRY( void,      ffi_type_void      ) \
+    MENTRY( uint8_t,   ffi_type_uint8     ) \
+    MENTRY( int8_t,    ffi_type_sint8     ) \
+    MENTRY( uint16_t,  ffi_type_uint16    ) \
+    MENTRY( int16_t,   ffi_type_sint16    ) \
+    MENTRY( uint32_t,  ffi_type_uint32    ) \
+    MENTRY( int32_t,   ffi_type_sint32    ) \
+    MENTRY( uint64_t,  ffi_type_uint64    ) \
+    MENTRY( int64_t,   ffi_type_sint64    ) \
+    MENTRY( size_t,    ffi_type_size_t    ) \
+    MENTRY( ptrdiff_t, ffi_type_ptrdiff_t ) \
+    MENTRY( float,     ffi_type_float     ) \
+    MENTRY( double,    ffi_type_double    )
+
+#define type_alias_map \
+    MENTRY( char,     int8_t   ) \
+    MENTRY( byte,     uint8_t  ) \
+    MENTRY( uchar,    uint8_t  ) \
+    MENTRY( short,    int16_t  ) \
+    MENTRY( ushort,   uint16_t ) \
+    MENTRY( int,      int32_t  ) \
+    MENTRY( unsigned, uint32_t ) \
+    MENTRY( long,     int64_t  )
+
 
 alien_type::alien_type(const string& tname): __tname(tname) {}
 const ffi_type* alien_type::ffitype() const {
@@ -102,6 +114,25 @@ static int alien_types_tostring(lua_State* L) {
     return 1;
 }
 
+static int alien_types_register_basic(lua_State* L, const char* tname, ffi_type* ffitype) {
+    lua_pushstring(L, tname);
+    lua_getglobal(L, ALIEN_TYPE_TABLE);
+    lua_pushvalue(L, -2);
+    lua_gettable(L, -2);
+    if (!lua_isnil(L, -1))
+        return luaL_error(L, "alien: can't define type '%s' twice", tname);
+    lua_pop(L, 1);
+    lua_pushvalue(L, -2);
+
+    alien_type* new_type = new alien_type_basic(tname, FFI_DEFAULT_ABI, ffitype);
+    alien_type** udata = static_cast<alien_type**>(lua_newuserdata(L, sizeof(void*)));
+    luaL_setmetatable(L, ALIEN_TYPE_META);
+    *udata = new_type;
+
+    lua_settable(L, -3);
+    return 1;
+}
+
 int alien_types_init(lua_State* L) {
     if (!lua_istable(L, 1))
         return luaL_error(L, "alien: register alien types failed, illegal argument");
@@ -129,28 +160,11 @@ int alien_types_init(lua_State* L) {
     lua_newtable(L);
     lua_setglobal(L, ALIEN_TYPE_TABLE);
 
-    alien_types_register_basic(L, "int", &ffi_type_uint);
+#define MENTRY(_a, _b) alien_types_register_basic(L, #_a, &_b);
+    basic_type_map
+#undef MENTRY
 
     return 0;
-}
-
-int alien_types_register_basic(lua_State* L, const char* tname, ffi_type* ffitype) {
-    lua_pushstring(L, tname);
-    lua_getglobal(L, ALIEN_TYPE_TABLE);
-    lua_pushvalue(L, -2);
-    lua_gettable(L, -2);
-    if (!lua_isnil(L, -1))
-        return luaL_error(L, "alien: can't define type '%s' twice", tname);
-    lua_pop(L, 1);
-    lua_pushvalue(L, -2);
-
-    alien_type* new_type = new alien_type_basic(tname, FFI_DEFAULT_ABI, ffitype);
-    alien_type** udata = static_cast<alien_type**>(lua_newuserdata(L, sizeof(void*)));
-    luaL_setmetatable(L, ALIEN_TYPE_META);
-    *udata = new_type;
-
-    lua_settable(L, -3);
-    return 1;
 }
 
 /**
