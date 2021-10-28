@@ -14,18 +14,20 @@ int alien_operator_method_new(lua_State* L, alien_type* type);
 class alien_value {
     protected:
         const alien_type* type;
-        std::shared_ptr<char[]> _mem;
+        std::shared_ptr<char> _mem;
         void* val_ptr;
 
     public:
         alien_value() = delete;
         alien_value(const alien_type* type);
         alien_value(const alien_type* type, void* ptr);
+        alien_value(const alien_type* type, std::shared_ptr<char> mem, void* ptr);
 
         /** pass pointer to ffi call */
         virtual void* ptr();
         virtual const void* ptr() const;
         size_t __sizeof() const;
+        const alien_type* alientype() const;
 
         virtual void assignFrom(const alien_value& val);
         virtual void assignFromLua(lua_State* L, size_t idx);

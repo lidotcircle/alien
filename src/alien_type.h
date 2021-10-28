@@ -41,6 +41,7 @@ class alien_type {
         virtual bool is_struct() const;
         virtual bool is_buffer() const;
         virtual bool is_union() const;
+        virtual bool is_callback() const;
 
         virtual ~alien_type() = default;
 };

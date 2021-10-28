@@ -78,6 +78,7 @@ bool alien_type::is_pointer() const { return false; }
 bool alien_type::is_struct() const  { return false; }
 bool alien_type::is_buffer() const  { return false; }
 bool alien_type::is_union() const   { return false; }
+bool alien_type::is_callback() const{ return false; }
 
 static int alien_push_type_table(lua_State* L) {
     alien_push_alien(L);
