@@ -1,9 +1,11 @@
 #include <funchook.h>
 #include <lua.hpp>
+#include <assert.h>
 #include <string>
 #include <vector>
 #include <map>
 #include "alien_function.h"
+#include "alien_value.h"
 using namespace std;
 
 
@@ -202,246 +204,141 @@ static int alien_function_trampline(lua_State* L) {
     return af->trampoline(L);
 }
 
+int alien_function__make_function(lua_State *L, alien_Library* lib, void *fn, const string& name) {
+    assert(L == lib->get_lua_State());
+    alien_Function* af = new alien_Function(lib, fn, name);
+    alien_Function** paf = (alien_Function**)lua_newuserdata(L, sizeof(alien_Function*));
+    *paf = af;
+    luaL_setmetatable(L, ALIEN_FUNCTION_META);
+    return 1;
+}
+
 // TODO
 int alien_function_new(lua_State *L) {
-    void *fn = lua_touserdata(L, 1);
-    if(!fn)
-        return luaL_error(L, "alien: not a userdata");
-    return alien_makefunction(L, NULL, fn, NULL);
-}
-
-int alien_function_types(lua_State *L) {
-    ffi_status status;
-    ffi_abi abi;
-    alien_Function *af = alien_checkfunction(L, 1);
-    if (af->type_ref != -1) {
-        return luaL_error(L, "alien: function prototype has be defined");
-    }
-    if (!lua_istable(L, 2)) {
-        return luaL_error(L, "alien: define type failed");
-    }
-
-    if (af->hookhandle) {
-        return luaL_error(L, "aline: type of horigin function must be confirmed when creating");
-    }
-    int i, ret_type;
-    void *aud;
-    lua_Alloc lalloc = lua_getallocf(L, &aud);
-    lua_getfield(L, 2, "ret");
-    ret_type = luaL_checkoption(L, -1, "int", alien_typenames);
-    af->ret_type = static_cast<alien_Type>(ret_type);
-    af->ffi_ret_type = ffitypes[ret_type];
-    lua_getfield(L, 2, "abi");
-    abi = ffi_abis[luaL_checkoption(L, -1, "default", ffi_abi_names)];
-    lua_pop(L, 2);
-
-    if(af->params) {
-        lalloc(aud, af->params, sizeof(alien_Type) * af->nparams, 0);
-        lalloc(aud, af->ffi_params, sizeof(ffi_type *) * af->nparams, 0);
-        af->params = NULL; af->ffi_params = NULL;
-    }
-    af->nparams = lua_objlen(L, 2);
-    if(af->nparams > 0) {
-        af->ffi_params = (ffi_type **)lalloc(aud, NULL, 0, sizeof(ffi_type *) * af->nparams);
-        if(!af->ffi_params) return luaL_error(L, "alien: out of memory");
-        af->params = (alien_Type *)lalloc(aud, NULL, 0, af->nparams * sizeof(alien_Type));
-        if(!af->params) return luaL_error(L, "alien: out of memory");
-    } else {
-        af->ffi_params = NULL;
-        af->params = NULL;
-    }
-    for(i = 0; i < af->nparams; i++) {
-        int type;
-        lua_rawgeti(L, 2, i + 1);
-        type = luaL_checkoption(L, -1, "int", alien_typenames);
-        af->params[i] = static_cast<alien_Type>(type);
-        af->ffi_params[i] = ffitypes[type];
-        lua_pop(L, 1);
-    }
-
-    status = ffi_prep_cif(&(af->cif), abi, af->nparams,
-            af->ffi_ret_type,
-            af->ffi_params);
-    if(status != FFI_OK)
-        return luaL_error(L, "alien: error in libffi preparation");
-    if(af->fn_ref) {
-        status = ffi_prep_closure_loc(static_cast<ffi_closure*>(af->fn), &(af->cif), &alien_callback_call, af, af->ffi_codeloc);
-        if(status != FFI_OK) return luaL_error(L, "alien: cannot create callback");
-    }
-
-    lua_pushvalue(L, 2);
-    af->type_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     return 0;
 }
 
-int alien_function_tostring(lua_State *L) {
-    alien_Function *af = alien_checkfunction(L, 1);
-    lua_pushfstring(L, "alien function %s, library %s", af->name ? af->name : "anonymous",
-            ((af->lib && af->lib->name) ? af->lib->name : "default"));
-    return 1;
+
+alien_Function::alien_Function(alien_Library* lib, void* fn, const string& name):
+    lib(lib), name(name), L(lib->get_lua_State()), fn(fn) , ret_type(nullptr),
+    params(), ffi_params(nullptr), hookhandle(nullptr)
+{
+    // TODO
+    alien_type* void_t = nullptr;
+    this->define_types(FFI_DEFAULT_ABI, void_t, vector<alien_type*>());
 }
 
-int alien_function_call(lua_State *L) {
+bool alien_Function::define_types(ffi_abi abi, alien_type* ret, const vector<alien_type*>& params) {
+    this->params = params;
+    this->ret_type = ret;
+
+    this->ffi_params = std::make_unique<ffi_type*[]>(this->params.size());
+    for(size_t i=0;i<this->params.size();i++)
+        this->ffi_params[i] = this->params[i]->ffitype();
+
+    ffi_status status = ffi_prep_cif(&this->cif, abi, this->params.size(),
+                                     this->ret_type->ffitype(), this->ffi_params.get());
+    if(status != FFI_OK)
+        return false;
+
+    return true;
+}
+
+int alien_Function::call_from_lua(lua_State *L) {
+    assert(this->lib->get_lua_State() == L);
     int iret; double dret; void *pret; long lret; unsigned long ulret; float fret;
     int i, nrefi = 0, nrefui = 0, nrefd = 0, nrefc = 0;
+
     void **args = NULL;
-    alien_Function *af = alien_checkfunction(L, 1);
-    ffi_cif *cif = &(af->cif);
     int nargs = lua_gettop(L) - 1;
-    if(nargs != af->nparams)
-        return luaL_error(L, "alien: too %s arguments (function %s)", nargs < af->nparams ? "few" : "many",
-                af->name ? af->name : "anonymous");
-    if(nargs > 0) args = static_cast<void**>(alloca(sizeof(void*) * nargs));
+    if (nargs != this->params.size())
+        return luaL_error(L, "alien: too %s arguments (function %s)",
+                          nargs < this->params.size() ? "few" : "many",
+                          this->name.c_str());
+    if(nargs > 0) args = new void*[nargs];
+    vector<std::unique_ptr<alien_value>> values;
     for(i = 0; i < nargs; i++) {
-        void *arg;
-        int j = i + 2;
-        switch(af->params[i]) {
-            case AT_byte:
-                arg = alloca(sizeof(char)); *((char*)arg) = (signed char)lua_tointeger(L, j);
-                break;
-            case AT_char:
-                arg = alloca(sizeof(unsigned char)); *((unsigned char*)arg) = (unsigned char)lua_tointeger(L, j);
-                break;
-            case AT_short:
-                arg = alloca(sizeof(short)); *((short*)arg) = (short)lua_tonumber(L, j);
-                break;
-            case AT_ushort:
-                arg = alloca(sizeof(unsigned short)); *((unsigned short*)arg) = (unsigned short)lua_tonumber(L, j);
-                break;
-            case AT_int:
-                arg = alloca(sizeof(int)); *((int*)arg) = (int)lua_tonumber(L, j);
-                break;
-            case AT_uint:
-                arg = alloca(sizeof(unsigned int)); *((unsigned int*)arg) = (unsigned int)lua_tonumber(L, j);
-                break;
-            case AT_long:
-                arg = alloca(sizeof(long)); *((long*)arg) = (long)lua_tonumber(L, j);
-                break;
-            case AT_ulong:
-                arg = alloca(sizeof(unsigned long)); *((unsigned long*)arg) = (unsigned long)lua_tonumber(L, j);
-                break;
-            case AT_ptrdiff_t:
-                arg = alloca(sizeof(ptrdiff_t)); *((ptrdiff_t*)arg) = (ptrdiff_t)lua_tonumber(L, j);
-                break;
-            case AT_size_t:
-                arg = alloca(sizeof(size_t)); *((size_t*)arg) = (size_t)lua_tonumber(L, j);
-                break;
-            case AT_float:
-                arg = alloca(sizeof(float)); *((float*)arg) = (float)lua_tonumber(L, j);
-                break;
-            case AT_double:
-                arg = alloca(sizeof(double)); *((double*)arg) = (double)lua_tonumber(L, j);
-                break;
-            case AT_string:
-                arg = alloca(sizeof(char*));
-                if(lua_isuserdata(L, j))
-                    *((char**)arg) = static_cast<char*>(alien_touserdata(L, j));
-                else
-                    *((const char**)arg) = lua_isnil(L, j) ? NULL : lua_tostring(L, j);
-                break;
-            case AT_pointer:
-                arg = alloca(sizeof(char*));
-                *((void**)arg) = lua_isstring(L, j) ? (void*)lua_tostring(L, j) : alien_touserdata(L, j);
-                break;
-            case AT_refchar:
-                arg = alloca(sizeof(char *));
-                *((char **)arg) = static_cast<char*>(alloca(sizeof(char)));
-                **((char **)arg) = (char)lua_tonumber(L, j);
-                nrefc++;
-                break;
-            case AT_refint:
-                arg = alloca(sizeof(int *));
-                *((int **)arg) = static_cast<int*>(alloca(sizeof(int)));
-                **((int **)arg) = (int)lua_tonumber(L, j);
-                nrefi++;
-                break;
-            case AT_refuint:
-                arg = alloca(sizeof(unsigned int *));
-                *((unsigned int **)arg) = static_cast<unsigned int*>(alloca(sizeof(unsigned int)));
-                **((unsigned int **)arg) = (unsigned int)lua_tonumber(L, j);
-                nrefui++;
-                break;
-            case AT_refdouble:
-                arg = alloca(sizeof(double *));
-                *((double **)arg) = static_cast<double*>(alloca(sizeof(double)));
-                **((double **)arg) = (double)lua_tonumber(L, j);
-                nrefd++;
-                break;
-            case AT_longlong:
-                arg = alloca(sizeof(long long)); *((long long*)arg) = (long long)lua_tonumber(L, j);
-                break;
-            case AT_ulonglong:
-                arg = alloca(sizeof(unsigned long long)); *((unsigned long long*)arg) = (unsigned long long)lua_tonumber(L, j);
-                break;
-            case AT_callback:
-                arg = alloca(sizeof(void*)); *((void**)arg) = (alien_Function *)alien_checkfunction(L, j)->fn;
-                break;
-            default:
-                return luaL_error(L, "alien: parameter %d is of unknown type (function %s)", j,
-                        af->name ? af->name : "anonymous");
-        }
-        args[i] = arg;
+        alien_value* val = this->params[i]->fromLua(L, i + 2);
+        args[i] = val->ptr();
+        values.push_back(std::unique_ptr<alien_value>(val));
     }
-    pret = NULL;
-    switch(af->ret_type) {
-        case AT_void: ffi_call(cif, (void(*)())(af->fn), NULL, args); lua_pushnil(L); break;
-        case AT_byte: ffi_call(cif, (void(*)())(af->fn), &iret, args); lua_pushnumber(L, (signed char)iret); break;
-        case AT_char: ffi_call(cif, (void(*)())(af->fn), &iret, args); lua_pushnumber(L, (unsigned char)iret); break;
-        case AT_short: ffi_call(cif, (void(*)())(af->fn), &iret, args); lua_pushnumber(L, (short)iret); break;
-        case AT_ushort: ffi_call(cif, (void(*)())(af->fn), &iret, args); lua_pushnumber(L, (unsigned short)iret); break;
-        case AT_int: ffi_call(cif, (void(*)())(af->fn), &iret, args); lua_pushnumber(L, iret); break;
-        case AT_uint: ffi_call(cif, (void(*)())(af->fn), &iret, args); lua_pushnumber(L, (unsigned int)iret); break;
-        case AT_long: ffi_call(cif, (void(*)())(af->fn), &lret, args); lua_pushnumber(L, lret); break;
-        case AT_ulong: ffi_call(cif, (void(*)())(af->fn), &ulret, args); lua_pushnumber(L, (unsigned long)ulret); break;
-        case AT_ptrdiff_t: ffi_call(cif, (void(*)())(af->fn), &lret, args); lua_pushnumber(L, lret); break;
-        case AT_size_t: ffi_call(cif, (void(*)())(af->fn), &ulret, args); lua_pushnumber(L, (size_t)ulret); break;
-        case AT_float: ffi_call(cif, (void(*)())(af->fn), &fret, args); lua_pushnumber(L, fret); break;
-        case AT_double: ffi_call(cif, (void(*)())(af->fn), &dret, args); lua_pushnumber(L, dret); break;
-        case AT_string: ffi_call(cif, (void(*)())(af->fn), &pret, args);
-                        if (pret) lua_pushstring(L, (const char *)pret); else lua_pushnil(L); break;
-        case AT_pointer: ffi_call(cif, (void(*)())(af->fn), &pret, args);
-                         if (pret) lua_pushlightuserdata(L, pret); else lua_pushnil(L); break;
-        default:
-                         return luaL_error(L, "alien: unknown return type (function %s)", af->name ?
-                                 af->name : "anonymous");
-    }
-    for(i = 0; i < nargs; i++) {
-        switch(af->params[i]) {
-            case AT_refchar: lua_pushnumber(L, **(char **)args[i]); break;
-            case AT_refint: lua_pushnumber(L, **(int **)args[i]); break;
-            case AT_refuint: lua_pushnumber(L, **(unsigned int **)args[i]); break;
-            case AT_refdouble: lua_pushnumber(L, **(double **)args[i]); break;
-            default: break;
+    std::unique_ptr<alien_value> ret(this->ret_type->new_value());
+    ffi_call(&this->cif, reinterpret_cast<void(*)()>(this->fn), ret->ptr(), args);
+    ret->toLua(L);
+
+    int nref = 0;
+    for (size_t i=0;i<values.size();i++) {
+        auto vt = this->params[i];
+
+        if (vt->is_ref() && vt->is_basic()) {
+            values[i]->toLua(L);
+            nref++;
         }
     }
-    return 1 + nrefi + nrefui + nrefc + nrefd;
+
+    return 1 + nref;
 }
 
-int alien_function_addr(lua_State *L) {
-    alien_Function *af = alien_checkfunction(L, 1);
-    lua_pushnumber(L, (size_t)af->fn);
+int alien_Function::hook(lua_State* L, void* jmpto, int objref) {
+    if (this->hookhandle != nullptr)
+        return luaL_error(L, "alien: function has been hooked");
+
+    funchook_t* hook = funchook_create();
+    void* fn = this->fn;
+    if (funchook_prepare(hook, &fn, jmpto) != FUNCHOOK_ERROR_SUCCESS) {
+        funchook_destroy(hook);
+        return luaL_error(L, "alien: prepare hook failed");
+    }
+    if (funchook_install(hook, 0) != FUNCHOOK_ERROR_SUCCESS) {
+        funchook_destroy(hook);
+        return luaL_error(L, "alien: install hook failed");
+    }
+
+    int n = alien_function__make_function(L, this->lib, fn, "trampoline#" + this->name);
+    assert(n == 1);
+    lua_pushvalue(L, -1);
+    this->trampoline_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    this->keepalive_ref = objref;
+
     return 1;
 }
 
-int alien_function_gc(lua_State *L) {
-    alien_Function *af = alien_checkfunction(L, 1);
-    printf("function gc %s\n", af->name);
-    void *aud;
-    lua_Alloc lalloc = lua_getallocf(L, &aud);
-    if(af->name) LALLOC_FREE_STRING(lalloc, aud, af->name);
-    if(af->params) lalloc(aud, af->params, sizeof(alien_Type) * af->nparams, 0);
-    if(af->ffi_params) lalloc(aud, af->ffi_params, sizeof(ffi_type *) * af->nparams, 0);
-    if(af->hookhandle) {
-        funchook_uninstall(static_cast<funchook_t*>(af->hookhandle), 0);
-        funchook_destroy(static_cast<funchook_t*>(af->hookhandle));
-        af->hookhandle = NULL;
+int alien_Function::unhook(lua_State* L) {
+    assert(L == this->L);
+    if (this->hookhandle == nullptr) {
+        return luaL_error(L, "alien: not hooked");
     }
-    /*
-    if(af->fn_ref) {
-        luaL_unref(af->L, LUA_REGISTRYINDEX, af->fn_ref);
-        ffi_closure_free(af->fn);
+
+    if (funchook_uninstall(static_cast<funchook_t*>(this->hookhandle), 0) != FUNCHOOK_ERROR_SUCCESS) {
+        return luaL_error(L, "alien: uninstall hook failed");
     }
-    */
+
+    funchook_destroy(static_cast<funchook_t*>(this->hookhandle));
+    this->hookhandle = nullptr;
+    luaL_unref(this->L, LUA_REGISTRYINDEX, this->trampoline_ref);
+    this->trampoline_ref = LUA_NOREF;
+
     return 0;
+}
+
+int  alien_Function::trampoline(lua_State* L) {
+    lua_rawgeti(L, LUA_REGISTRYINDEX, this->trampoline_ref);
+    return 1;
+}
+
+string alien_Function::tostring() {
+    return this->lib->libname() + "::" + this->name + "()";
+}
+
+void* alien_Function::funcaddr() {
+    return this->fn;
+}
+
+alien_Function::~alien_Function() {
+    if (this->hookhandle)
+        this->unhook(this->L);
+
+    luaL_unref(this->L, LUA_REGISTRYINDEX, this->keepalive_ref);
+    this->keepalive_ref = LUA_NOREF;
 }
 

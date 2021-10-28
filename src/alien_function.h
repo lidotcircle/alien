@@ -5,6 +5,7 @@
 #include <ffi.h>
 #include <string>
 #include <vector>
+#include <memory>
 #include "alien_type.h"
 #include "alien_library.h"
 
@@ -13,11 +14,13 @@ class alien_Function {
     private:
         alien_Library *lib;
         std::string name;
+        lua_State* L;
 
         void *fn;
         alien_type* ret_type;
         std::vector<alien_type*> params;
         ffi_cif cif;
+        std::unique_ptr<ffi_type*[]> ffi_params;
 
         /* hook part */
         void* hookhandle;
@@ -36,9 +39,9 @@ class alien_Function {
         bool define_types(ffi_abi abi, alien_type* ret, const std::vector<alien_type*>& params);
         int  call_from_lua(lua_State *L);
 
-        void hook(lua_State* L, void* jmpto, int objref);
-        void unhook(lua_State* L);
-        int  trampoline(lua_State* L);
+        int hook(lua_State* L, void* jmpto, int objref);
+        int unhook(lua_State* L);
+        int trampoline(lua_State* L);
 
         std::string tostring();
         void* funcaddr();
