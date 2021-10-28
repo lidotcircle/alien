@@ -23,8 +23,8 @@ class alien_value {
         alien_value(const alien_type* type, void* ptr);
 
         /** pass pointer to ffi call */
-        void* ptr();
-        const void* ptr() const;
+        virtual void* ptr();
+        virtual const void* ptr() const;
         size_t __sizeof() const;
 
         virtual void assignFrom(const alien_value& val);
