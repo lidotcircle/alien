@@ -1,42 +1,208 @@
-#include "alien.h"
 #include <funchook.h>
+#include <lua.hpp>
+#include <string>
+#include <vector>
+#include <map>
+#include "alien_function.h"
+using namespace std;
 
 
 #if defined(X86_WIN32)
-static const ffi_abi ffi_abis[] = { FFI_SYSV, FFI_STDCALL, FFI_THISCALL, FFI_FASTCALL, FFI_MS_CDECL, FFI_PASCAL, FFI_REGISTER, FFI_DEFAULT_ABI };
-static const char *const ffi_abi_names[] = { "sysv", "stdcall", "thiscall", "fastcall", "cdecl", "pascal", "register", "default", NULL };
+const ffi_abi ffi_abis[] = { FFI_SYSV, FFI_STDCALL, FFI_THISCALL, FFI_FASTCALL, FFI_MS_CDECL, FFI_PASCAL, FFI_REGISTER, FFI_DEFAULT_ABI };
+const char *const ffi_abi_names[] = { "sysv", "stdcall", "thiscall", "fastcall", "cdecl", "pascal", "register", "default", NULL };
 #elif defined(X86_WIN64)
-static const ffi_abi ffi_abis[] = { FFI_WIN64, FFI_GNUW64, FFI_DEFAULT_ABI };
-static const char *const ffi_abi_names[] = { "win64", "gnuw64", "default", NULL };
+const ffi_abi ffi_abis[] = { FFI_WIN64, FFI_GNUW64, FFI_DEFAULT_ABI };
+const char *const ffi_abi_names[] = { "win64", "gnuw64", "default", NULL };
 #elif defined(X86_64) || (defined (__x86_64__) && defined (X86_DARWIN))
-static const ffi_abi ffi_abis[] = { FFI_UNIX64, FFI_WIN64, FFI_EFI64, FFI_GNUW64, FFI_DEFAULT_ABI };
-static const char *const ffi_abi_names[] = { "unix64", "win64", "efi64", "gnuw64", "default", NULL };
+const ffi_abi ffi_abis[] = { FFI_UNIX64, FFI_WIN64, FFI_EFI64, FFI_GNUW64, FFI_DEFAULT_ABI };
+const char *const ffi_abi_names[] = { "unix64", "win64", "efi64", "gnuw64", "default", NULL };
 #else
-static const ffi_abi ffi_abis[] = { FFI_SYSV, FFI_THISCALL, FFI_FASTCALL, FFI_STDCALL, FFI_PASCAL, FFI_REGISTER, FFI_MS_CDECL, FFI_DEFAULT_ABI };
-static const char *const ffi_abi_names[] = { "sysv", "thiscall", "fastcall", "stdcall", "pascal", "register", "cdecl", "default", NULL };
+const ffi_abi ffi_abis[] = { FFI_SYSV, FFI_THISCALL, FFI_FASTCALL, FFI_STDCALL, FFI_PASCAL, FFI_REGISTER, FFI_MS_CDECL, FFI_DEFAULT_ABI };
+const char *const ffi_abi_names[] = { "sysv", "thiscall", "fastcall", "stdcall", "pascal", "register", "cdecl", "default", NULL };
 #endif
 
+#define ALIEN_FUNCTION_META "alien_function_meta"
 
-int alien_makefunction(lua_State *L, void *lib, void *fn, char *name) {
-    alien_Function *af = (alien_Function *)lua_newuserdata(L, sizeof(alien_Function));
-    if(!af)
-        return luaL_error(L, "alien: out of memory");
-    luaL_getmetatable(L, ALIEN_FUNCTION_META);
-    lua_setmetatable(L, -2);
-    af->fn = fn;
-    af->fn_ref = 0;
-    af->name = name;
-    af->lib = static_cast<alien_Library*>(lib);
-    af->nparams = 0;
-    af->ret_type = AT_void;
-    af->params = NULL;
-    af->ffi_params = NULL;
-    af->type_ref = -1;
-    af->hookhandle = NULL;
-    af->trampoline_fn = NULL;
+static alien_Function **alien_checkfunction(lua_State *L, int index) {
+    return (alien_Function **)luaL_checkudata(L, index, ALIEN_FUNCTION_META);
+}
+static bool alien_isfunction(lua_State *L, int index) {
+    return luaL_testudata(L, index, ALIEN_FUNCTION_META) != nullptr;
+}
+
+static int alien_function_gc(lua_State *L);
+static int alien_function_tostring(lua_State *L);
+static int alien_function_call(lua_State *L);
+static int alien_function__index(lua_State *L);
+static int alien_function_types(lua_State *L);
+static int alien_function_hook(lua_State *L);
+static int alien_function_unhook(lua_State *L);
+static int alien_function_addr(lua_State *L);
+static int alien_function_trampoline(lua_State *L);
+
+int alien_function_init(lua_State *L) {
+    luaL_newmetatable(L, ALIEN_FUNCTION_META);
+    
+    lua_pushliteral(L, "__gc");
+    lua_pushcfunction(L, alien_function_gc);
+    lua_settable(L, -3);
+
+    lua_pushliteral(L, "__tostring");
+    lua_pushcfunction(L, alien_function_tostring);
+    lua_settable(L, -3);
+
+    lua_pushliteral(L, "__call");
+    lua_pushcfunction(L, alien_function_call);
+    lua_settable(L, -3);
+
+    lua_pushliteral(L, "__index");
+    lua_pushcfunction(L, alien_function__index);
+    lua_settable(L, -3);
+
+    return 0;
+}
+
+static map<string, lua_CFunction> function_methods = {
+    { "types",  alien_function_types },
+    { "hook",   alien_function_hook },
+    { "unhook", alien_function_unhook },
+};
+static map<string, lua_CFunction> function_properties = {
+    { "addr",       alien_function_types },
+    { "trampoline", alien_function_types },
+};
+static int alien_function__index(lua_State* L) {
+    const string method = luaL_checkstring(L, 2);
+    auto fn = function_methods.find(method);
+    if (fn != function_methods.end()) {
+        lua_pushcfunction(L, fn->second);
+        return 1;
+    }
+
+    fn = function_properties.find(method);
+    if (fn != function_properties.end()) {
+        lua_pushcfunction(L, fn->second);
+        lua_pushvalue(L, 1);
+        lua_call(L, 1, 1);
+        return 1;
+    }
+
+    return luaL_error(L, "alien: not found method / properties %s in alien_function", method.c_str());
+}
+
+static int alien_function_call(lua_State* L) {
+    alien_Function** paf = alien_checkfunction(L, 1);
+    alien_Function* af = *paf;
+
+    return af->call_from_lua(L);
+}
+
+static int alien_function_tostring(lua_State* L) {
+    alien_Function** paf = alien_checkfunction(L, 1);
+    alien_Function* af = *paf;
+
+    lua_pushstring(L, af->tostring().c_str());
     return 1;
 }
 
+static int alien_function_gc(lua_State* L) {
+    alien_Function** paf = alien_checkfunction(L, 1);
+    alien_Function* af = *paf;
+    *paf = nullptr;
+    delete af;
+    return 1;
+}
+
+static int alien_function_types(lua_State* L) {
+    alien_Function **paf = alien_checkfunction(L, 1);
+    alien_Function *af = *paf;
+
+    alien_type* ret = nullptr;
+    vector<alien_type*> params;
+
+    if (!lua_istable(L, 2)) {
+        return luaL_error(L, "alien: bad type definition");
+    }
+
+    lua_getfield(L, 2, "abi");
+    ffi_abi abi = ffi_abis[luaL_checkoption(L, -1, "default", ffi_abi_names)];
+    lua_getfield(L, 2, "ret");
+    if (lua_isnil(L, -1))
+        return luaL_error(L, "alien: return type should be specified");
+    ret = alien_checktype(L, -1);
+    lua_pop(L, 2);
+
+    size_t nparams = luaL_len(L, 2);
+    for(size_t i=1;i<=nparams;i++) {
+        lua_rawgeti(L, 2, i);
+
+        alien_type* para_type = alien_checktype(L, -1);
+        params.push_back(para_type);
+
+        lua_pop(L, 1);
+    }
+
+    if (!af->define_types(abi, ret, params)) {
+        return luaL_error(L, "alien: define function type failed");
+    }
+    return 0;
+}
+
+static int alien_function_hook(lua_State* L) {
+    alien_Function **paf = alien_checkfunction(L, 1);
+    alien_Function *af = *paf;
+
+    if (!lua_isinteger(L, 2)) {
+        void* fn = reinterpret_cast<void*>(lua_tointeger(L, 2));
+        af->hook(L, fn, LUA_NOREF);
+    } else if (lua_islightuserdata(L, 2)) {
+        void* fn = lua_touserdata(L, 2);
+        af->hook(L, fn, LUA_NOREF);
+    } else if (alien_isfunction(L, 2)) {
+        alien_Function **pafx = alien_checkfunction(L, 2);
+        alien_Function *afx = *pafx;
+        lua_pushvalue(L, 2);
+        int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+        af->hook(L, afx->funcaddr(), ref);
+    /* TODO
+    } else if (alien_iscallback(L, 2)) {
+        alien_type_callback **pcb = alien_checkcallback(L, 2);
+        alien_type_callback *cb = *pcb;
+        lua_pushvalue(L, 2);
+        int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+        af->hook(L, cb->funcaddr(), ref);
+    */
+    } else {
+        return luaL_error(L, "alien: unexpected hook parameter");
+    }
+
+    return 1;
+}
+
+static int alien_function_unhook(lua_State* L) {
+    alien_Function **paf = alien_checkfunction(L, 1);
+    alien_Function *af = *paf;
+
+    af->unhook(L);
+    return 1;
+}
+
+static int alien_function_addr(lua_State* L) {
+    alien_Function **paf = alien_checkfunction(L, 1);
+    alien_Function *af = *paf;
+
+    lua_pushnumber(L, reinterpret_cast<ptrdiff_t>(af->funcaddr()));
+    return 1;
+}
+
+static int alien_function_trampline(lua_State* L) {
+    alien_Function **paf = alien_checkfunction(L, 1);
+    alien_Function *af = *paf;
+
+    return af->trampoline(L);
+}
+
+// TODO
 int alien_function_new(lua_State *L) {
     void *fn = lua_touserdata(L, 1);
     if(!fn)

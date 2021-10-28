@@ -153,28 +153,6 @@ typedef struct {
 } alien_Library;
 
 typedef struct {
-  alien_Library *lib;
-  void *fn;
-  char *name;
-  alien_Type ret_type;
-  ffi_cif cif;
-  ffi_type *ffi_ret_type;
-  int nparams;
-  alien_Type *params;
-  ffi_type **ffi_params;
-
-  int type_ref;
-  /* hook part */
-  void* hookhandle;
-  void* trampoline_fn;
-
-  /* callback part */
-  lua_State *L;
-  void *ffi_codeloc;
-  int fn_ref;
-} alien_Function;
-
-typedef struct {
   char *p;
   size_t size;
 } alien_Buffer;
