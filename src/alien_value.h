@@ -1,9 +1,9 @@
 #ifndef _ALIEN_VALUE_H_
 #define _ALIEN_VALUE_H_
 
-#include <lua.hpp>
 #include <memory>
 #include <string>
+#include "alien.h"
 #include "alien_type_basic.h"
 
 /* operator dispatcher

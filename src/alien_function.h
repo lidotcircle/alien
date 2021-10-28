@@ -1,11 +1,11 @@
 #ifndef _ALIEN_FUNCTION_H_
 #define _ALIEN_FUNCTION_H_
 
-#include <lua.hpp>
 #include <ffi.h>
 #include <string>
 #include <vector>
 #include <memory>
+#include "alien.h"
 #include "alien_type.h"
 #include "alien_library.h"
 
@@ -49,6 +49,8 @@ class alien_Function {
         ~alien_Function();
 };
 
+
+int alien_function_init(lua_State *L);
 
 int alien_function__make_function(lua_State *L, alien_Library* lib, void *fn, const std::string& name);
 

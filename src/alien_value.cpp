@@ -20,7 +20,7 @@ int alien_operator_method_new(lua_State* L, alien_type* type) {
 }
 
 alien_value::alien_value(const alien_type* type):
-    type(type), _mem(new char[type->__sizeof()], [](char ptr[]) {delete[] ptr;}),
+    type(type), _mem(type->__sizeof() > 0 ? (new char[type->__sizeof()]) : nullptr, [](char ptr[]) { if (ptr != nullptr) delete[] ptr;}),
     val_ptr(_mem.get()) {}
 
 alien_value::alien_value(const alien_type* type, void* ptr):

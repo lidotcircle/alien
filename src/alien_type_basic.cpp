@@ -36,6 +36,10 @@ alien_value* alien_type_basic::fromLua(lua_State* L, int idx) const {
     return alien_value_basic::fromLua(this, L, idx);
 }
 
+alien_value* alien_type_basic::new_value() const {
+    return new alien_value_basic(this);
+}
+
 bool alien_type_basic::is_integer() const {
     return integer_types.find(const_cast<alien_type_basic*>(this)->ffitype()) != integer_types.end();
 }

@@ -6,7 +6,20 @@ alien_value_basic::alien_value_basic(const alien_type* type): alien_value(type) 
 alien_value_basic::alien_value_basic(const alien_type* type, void* ptr): alien_value(type, ptr) {}
 
 void alien_value_basic::toLua(lua_State* L) const {
-    if (this->type->is_integer()) {
+    if (this->type->is_signed()) {
+        switch (this->__sizeof()) {
+            case 1:
+                lua_pushnumber(L, *static_cast<const int8_t *>(this->ptr())); break;
+            case 2:
+                lua_pushnumber(L, *static_cast<const int16_t*>(this->ptr())); break;
+            case 4:
+                lua_pushnumber(L, *static_cast<const int32_t*>(this->ptr())); break;
+            case 8:
+                lua_pushnumber(L, *static_cast<const int64_t*>(this->ptr())); break;
+            default:
+                luaL_error(L, "alien: bad signed integer type");
+        }
+    } else if (this->type->is_integer()) {
         switch (this->__sizeof()) {
             case 1:
                 lua_pushnumber(L, *static_cast<const uint8_t *>(this->ptr())); break;

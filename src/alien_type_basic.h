@@ -3,7 +3,7 @@
 
 #include <ffi.h>
 #include <string>
-#include <lua.hpp>
+#include "alien.h"
 #include "alien_type.h"
 
 class alien_type_basic: public alien_type {
@@ -16,6 +16,7 @@ class alien_type_basic: public alien_type {
 
         virtual ffi_type* ffitype() override;
         virtual alien_value* fromLua(lua_State* L, int idx) const override;
+        virtual alien_value* new_value() const override;
 
         virtual bool is_integer() const override;
         virtual bool is_signed()  const override;

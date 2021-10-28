@@ -1,9 +1,9 @@
 #ifndef _ALIEN_TYPE_H_
 #define _ALIEN_TYPE_H_
 
-#include <lua.hpp>
 #include <ffi.h>
 #include <string>
+#include "alien.h"
 
 /** forward declaration */
 class alien_value;
@@ -27,7 +27,7 @@ class alien_type {
         virtual size_t __sizeof() const;
 
         virtual alien_value* fromLua(lua_State* L, int idx) const = 0;
-        virtual alien_value* new_value() const = 0; // TODO
+        virtual alien_value* new_value() const = 0;
 
         virtual bool is_integer() const;
         virtual bool is_signed() const;

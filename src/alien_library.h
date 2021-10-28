@@ -1,9 +1,9 @@
 #ifndef _ALIEN_LIBRARY_H_
 #define _ALIEN_LIBRARY_H_
 
-#include <lua.hpp>
 #include <string>
 #include <vector>
+#include "alien.h"
 
 class alien_Function;
 
@@ -37,8 +37,13 @@ class alien_Library {
         ~alien_Library();
 };
 
+int alien_library_init(lua_State* L);
+
 int alien_load(lua_State *L);
 int alien_functionlist(lua_State *L);
 int alien_hasfunction(lua_State *L);
+
+alien_Library* alien_library__get_default_library(lua_State *L);
+alien_Library* alien_library__get_misc(lua_State *L);
 
 #endif // _ALIEN_LIBRARY_H_

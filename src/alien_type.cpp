@@ -9,8 +9,8 @@
 #include <ffi.h>
 using namespace std;
 
-#define ALIEN_TYPE_META "alien_type_metatable"
-#define ALIEN_TYPE_TABLE "__alien_type_table"
+#define ALIEN_TYPE_META  "alien_type_metatable"
+#define ALIEN_TYPE_TABLE "__alien_types"
 
 /* libffi extension to support size_t and ptrdiff_t */
 #if PTRDIFF_MAX == 65535
@@ -79,6 +79,14 @@ bool alien_type::is_struct() const  { return false; }
 bool alien_type::is_buffer() const  { return false; }
 bool alien_type::is_union() const   { return false; }
 
+static int alien_push_type_table(lua_State* L) {
+    alien_push_alien(L);
+    lua_pushliteral(L, ALIEN_TYPE_TABLE);
+    lua_gettable(L, -2);
+    lua_remove(L, -2);
+    return 1;
+}
+
 static int alien_types_new(lua_State* L) {
     alien_type** pptype = static_cast<alien_type**>(luaL_checkudata(L, 1, ALIEN_TYPE_META));
     alien_type* ptype = *pptype;
@@ -116,7 +124,7 @@ static int alien_types_tostring(lua_State* L) {
 
 static int alien_types_register_basic(lua_State* L, const char* tname, ffi_type* ffitype) {
     lua_pushstring(L, tname);
-    lua_getglobal(L, ALIEN_TYPE_TABLE);
+    alien_push_type_table(L);
     lua_pushvalue(L, -2);
     lua_gettable(L, -2);
     if (!lua_isnil(L, -1))
@@ -157,10 +165,13 @@ int alien_types_init(lua_State* L) {
     lua_settable(L, -3);
     lua_pop(L, 1);
 
+    alien_push_alien(L);
     lua_newtable(L);
-    lua_setglobal(L, ALIEN_TYPE_TABLE);
+    lua_pushliteral(L, ALIEN_TYPE_TABLE);
+    lua_settable(L, -3);
+    lua_pop(L, 1);
 
-#define MENTRY(_a, _b) alien_types_register_basic(L, #_a, &_b);
+#define MENTRY(_a, _b) alien_types_register_basic(L, #_a, &_b); lua_pop(L, 1);
     basic_type_map
 #undef MENTRY
 
@@ -181,7 +192,7 @@ int alien_types_defstruct(lua_State* L) {
         return luaL_error(L, "alien: bad argument with 'defstruct( structname, definition )'");
 
     const char* structname = luaL_checkstring(L, 1);
-    lua_getglobal(L, ALIEN_TYPE_TABLE);
+    alien_push_type_table(L);
     lua_pushvalue(L, 1);
     lua_gettable(L, -2);
     if (!lua_isnil(L, -1))
@@ -223,7 +234,7 @@ int alien_types_defstruct(lua_State* L) {
     luaL_setmetatable(L, ALIEN_TYPE_META);
     *ud = new_type;
 
-    lua_getglobal(L, ALIEN_TYPE_TABLE);
+    alien_push_type_table(L);
     lua_pushvalue(L, 1);
     lua_pushvalue(L, -3);
     lua_settable(L, -3);
@@ -236,7 +247,7 @@ int alien_types_defunion(lua_State* L) {
         return luaL_error(L, "alien: bad argument with 'defunion( unionname, definition )'");
 
     const char* unionname = luaL_checkstring(L, 1);
-    lua_getglobal(L, ALIEN_TYPE_TABLE);
+    alien_push_type_table(L);
     lua_pushvalue(L, 1);
     lua_gettable(L, -2);
     if (!lua_isnil(L, -1))
@@ -278,7 +289,7 @@ int alien_types_defunion(lua_State* L) {
     luaL_setmetatable(L, ALIEN_TYPE_META);
     *ud = new_type;
 
-    lua_getglobal(L, ALIEN_TYPE_TABLE);
+    alien_push_type_table(L);
     lua_pushvalue(L, 1);
     lua_pushvalue(L, -3);
     lua_settable(L, -3);
@@ -290,7 +301,7 @@ int alien_types_alias(lua_State* L) {
     const char* nname = luaL_checkstring(L, 1);
     luaL_checkudata(L, 2, ALIEN_TYPE_META);
 
-    lua_getglobal(L, ALIEN_TYPE_TABLE);
+    alien_push_type_table(L);
     lua_pushvalue(L, 1);
     lua_gettable(L, -2);
 

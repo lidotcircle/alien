@@ -1,6 +1,7 @@
 #ifndef _ALIEN_TYPE_STRUCT_H_
 #define _ALIEN_TYPE_STRUCT_H_
 
+#include "alien.h"
 #include "alien_type.h"
 #include <string>
 #include <vector>
@@ -18,8 +19,9 @@ class alien_type_struct: public alien_type {
                           ffi_abi abi, 
                           const std::vector<std::pair<std::string, alien_type*>>& members);
 
-        virtual alien_value* fromLua(lua_State* L, int idx) const override;
         virtual ffi_type* ffitype() override;
+        virtual alien_value* fromLua(lua_State* L, int idx) const override;
+        virtual alien_value* new_value() const override;
 
         bool   has_member(const std::string& member);
         size_t __offsetof(const std::string& member);

@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.4)
 project(alien)
 set(CMAKE_PROJECT_VERSION 0.7.1)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set (CMAKE_CXX_STANDARD 14)
 
 include(CheckIncludeFile)
 CHECK_INCLUDE_FILE(alloca.h HAVE_ALLOCA_H)
@@ -34,16 +35,27 @@ set_target_properties(alien PROPERTIES
     PREFIX "")
 target_sources(alien PRIVATE
     src/alien.cpp
-    src/alien_library.cpp
     src/alien_lua_util.cpp
-    src/alien_hook.cpp
-    src/alien_buffer.cpp
-    src/alien_callback.cpp
+    src/alien_library.cpp
     src/alien_function.cpp
-    src/alien_struct.cpp
+
+    src/alien_type.cpp
     src/alien_type_basic.cpp
+    src/alien_type_buffer.cpp
+    src/alien_type_pointer.cpp
+    src/alien_type_ref.cpp
+    src/alien_type_string.cpp
     src/alien_type_struct.cpp
     src/alien_type_union.cpp
+
+    src/alien_value.cpp
+    src/alien_value_basic.cpp
+    src/alien_value_buffer.cpp
+    src/alien_value_pointer.cpp
+    src/alien_value_ref.cpp
+    src/alien_value_struct.cpp
+    src/alien_value_union.cpp
+
     src/utils.cpp
     )
 target_include_directories(alien PRIVATE ${CMAKE_CURRENT_BINARY_DIR})

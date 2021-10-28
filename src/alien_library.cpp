@@ -97,7 +97,16 @@ alien_Library::alien_Library(lua_State* L, const string& libname, void* libhandl
 }
 
 const vector<string>& alien_Library::function_list() {
-    if (!this->init_func_list) {
+    while (!this->init_func_list) {
+        struct function_list* functions = lf_load(this->lib);
+        if (functions == nullptr)
+            break;
+
+        for (size_t i=0;i<lf_size(functions);i++)
+            this->funclist.push_back(lf_index(functions, i));
+
+        lf_free(functions);
+        break;
     }
     this->init_func_list = true;
 
@@ -108,10 +117,12 @@ bool alien_Library::has_function(const string& funcname) {
     if (!this->init_func_list)
         this->function_list();
 
-    return std::find(this->funclist.begin(),
-                     this->funclist.end(), 
-                     [&funcname](const string& n) { return n == funcname; }
-                    ) != this->funclist.end();
+    for (auto& f: this->funclist) {
+        if (f == funcname)
+            return true;
+    }
+
+    return false;
 }
 
 lua_State* alien_Library::get_lua_State() {
@@ -143,6 +154,8 @@ alien_Library::~alien_Library() {
 
 
 #define ALIEN_LIBRARY_META "alien_library_meta"
+#define ALIEN_LIBRARY_DEFAULT_LIB_GN "__alien_library_default_gn"
+#define ALIEN_LIBRARY_MISC_LIB       "__alien_library_misc_lib"
 
 static alien_Library** alien_checklibrary(lua_State*L, int idx) {
     return (alien_Library **)luaL_checkudata(L, idx, ALIEN_LIBRARY_META);
@@ -168,7 +181,29 @@ int alien_library_init(lua_State* L) {
     lua_settable(L, -3);
 
     lua_pop(L, 1);
+
+    alien_Library* al = new alien_Library(L, "default", nullptr);
+    alien_Library** pal = (alien_Library **)lua_newuserdata(L, sizeof(alien_Library*));
+    luaL_setmetatable(L, ALIEN_LIBRARY_META);
+
+    alien_push_alien(L);
+    lua_pushliteral(L, ALIEN_LIBRARY_DEFAULT_LIB_GN);
+    lua_pushvalue(L, -3);
+    lua_settable(L, -3);
+
     return 0;
+}
+
+alien_Library* alien_library__get_default_library(lua_State *L) {
+    alien_push_alien(L);
+    lua_pushliteral(L, ALIEN_LIBRARY_DEFAULT_LIB_GN);
+    lua_gettable(L, -2);
+    alien_Library** pal = alien_checklibrary(L, -1);
+    return *pal;
+}
+
+alien_Library* alien_library__get_misc(lua_State *L) {
+    return alien_library__get_default_library(L);
 }
 
 int alien_load(lua_State *L) {

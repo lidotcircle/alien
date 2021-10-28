@@ -1,6 +1,7 @@
 #ifndef _ALIEN_VALUE_STRUCT_H_
 #define _ALIEN_VALUE_STRUCT_H_
 
+#include "alien.h"
 #include "alien_value.h"
 
 

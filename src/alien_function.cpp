@@ -2,6 +2,7 @@
 #include <lua.hpp>
 #include <assert.h>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <map>
 #include "alien_function.h"
@@ -213,11 +214,23 @@ int alien_function__make_function(lua_State *L, alien_Library* lib, void *fn, co
     return 1;
 }
 
-// TODO
 int alien_function_new(lua_State *L) {
-    return 0;
-}
+    void* fn = nullptr;
+    if (!lua_isinteger(L, 1)) {
+        fn = reinterpret_cast<void*>(lua_tointeger(L, 2));
+    } else if (lua_islightuserdata(L, 2)) {
+        fn = lua_touserdata(L, 2);
+    } else {
+        return luaL_error(L, "alien: require a function pointer (integer or lightuserdata)");
+    }
 
+    auto lib = alien_library__get_misc(L);
+    std::ostringstream oss;
+    oss << "funcptr#[0x" << std::hex << fn << "]";
+    alien_function__make_function(L, lib, fn, oss.rdbuf()->str());
+
+    return 1;
+}
 
 alien_Function::alien_Function(alien_Library* lib, void* fn, const string& name):
     lib(lib), name(name), L(lib->get_lua_State()), fn(fn) , ret_type(nullptr),
@@ -249,13 +262,13 @@ int alien_Function::call_from_lua(lua_State *L) {
     int iret; double dret; void *pret; long lret; unsigned long ulret; float fret;
     int i, nrefi = 0, nrefui = 0, nrefd = 0, nrefc = 0;
 
-    void **args = NULL;
+    unique_ptr<void*[]> args;
     int nargs = lua_gettop(L) - 1;
     if (nargs != this->params.size())
         return luaL_error(L, "alien: too %s arguments (function %s)",
                           nargs < this->params.size() ? "few" : "many",
                           this->name.c_str());
-    if(nargs > 0) args = new void*[nargs];
+    if(nargs > 0) args = make_unique<void*[]>(nargs);
     vector<std::unique_ptr<alien_value>> values;
     for(i = 0; i < nargs; i++) {
         alien_value* val = this->params[i]->fromLua(L, i + 2);
@@ -263,7 +276,7 @@ int alien_Function::call_from_lua(lua_State *L) {
         values.push_back(std::unique_ptr<alien_value>(val));
     }
     std::unique_ptr<alien_value> ret(this->ret_type->new_value());
-    ffi_call(&this->cif, reinterpret_cast<void(*)()>(this->fn), ret->ptr(), args);
+    ffi_call(&this->cif, reinterpret_cast<void(*)()>(this->fn), ret->ptr(), args.get());
     ret->toLua(L);
 
     int nref = 0;

@@ -1,8 +1,8 @@
 #ifndef _ALIEN_VALUE_BASIC_H_
 #define _ALIEN_VALUE_BASIC_H_
 
+#include "alien.h"
 #include "alien_value.h"
-#include <lua.hpp>
 
 
 class alien_value_basic: public alien_value {
