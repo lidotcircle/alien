@@ -10,11 +10,12 @@ class alien_value_basic: public alien_value {
         alien_value_basic(const alien_type* type);
         alien_value_basic(const alien_type* type, void* ptr);
 
-        virtual void toLua(lua_State* L) const override;
+        virtual void to_lua(lua_State* L) const override;
         virtual alien_value* copy() const override;
 
-        static alien_value* fromLua(const alien_type* type, lua_State* L, int idx);
-        static alien_value* fromPtr(const alien_type* type, lua_State* L, void* ptr);
+        static alien_value* from_lua(const alien_type* type, lua_State* L, int idx);
+        static alien_value* from_ptr(const alien_type* type, lua_State* L, void* ptr);
+        static alien_value* new_value(const alien_type* type, lua_State* L);
 };
 
 #endif // _ALIEN_VALUE_BASIC_H_

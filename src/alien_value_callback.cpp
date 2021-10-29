@@ -125,7 +125,7 @@ void alien_value_callback::assignFrom(const alien_value& val) {
 void alien_value_callback::assignFromLua(lua_State* L, size_t idx) {
     luaL_error(L, "alien: can't change callback");
 }
-void alien_value_callback::toLua(lua_State* L) const {
+void alien_value_callback::to_lua(lua_State* L) const {
     const alien_value_callback** pvc = (const alien_value_callback**)lua_newuserdata(L, sizeof(alien_value_callback*));
     luaL_setmetatable(L, ALIEN_VALUE_CALLBACK_META);
     this->ref_inc();
@@ -150,15 +150,15 @@ void alien_value_callback::callback_call(ffi_cif* cif, void *resp, void **args, 
     lua_rawgeti(L, LUA_REGISTRYINDEX, vc->lfunc_ref);
     for(size_t i=0;i<vc->params.size();i++) {
         auto p = vc->params[i];
-        std::shared_ptr<alien_value> ap(p->fromPtr(L, args[i]));
-        ap->toLua(L);
+        std::shared_ptr<alien_value> ap(p->from_ptr(L, args[i]));
+        ap->to_lua(L);
     }
 
     lua_call(L, vc->params.size(), 1);
 
     if (!vc->ret_type->is_void()) {
         assert(resp != nullptr);
-        std::shared_ptr<alien_value> retval(vc->ret_type->fromLua(L, -1));
+        std::shared_ptr<alien_value> retval(vc->ret_type->from_lua(L, -1));
         memcpy(resp, retval->ptr(), retval->__sizeof());
     }
 

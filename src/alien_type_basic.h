@@ -16,9 +16,9 @@ class alien_type_basic: public alien_type {
 
         virtual ffi_type* ffitype() override;
 
-        virtual alien_value* fromLua(lua_State* L, int idx) const override;
-        virtual alien_value* fromPtr(lua_State* L, void* ptr) const override;
-        virtual alien_value* new_value() const override;
+        virtual alien_value* from_lua(lua_State* L, int idx) const override;
+        virtual alien_value* from_ptr(lua_State* L, void* ptr) const override;
+        virtual alien_value* new_value(lua_State* L) const override;
 
         virtual bool is_integer() const override;
         virtual bool is_signed()  const override;

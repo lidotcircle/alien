@@ -32,16 +32,16 @@ static const std::set<ffi_type*> signed_integer_types = {
     &ffi_type_slong,
 };
 
-alien_value* alien_type_basic::fromLua(lua_State* L, int idx) const {
-    return alien_value_basic::fromLua(this, L, idx);
+alien_value* alien_type_basic::from_lua(lua_State* L, int idx) const {
+    return alien_value_basic::from_lua(this, L, idx);
 }
 
-alien_value* alien_type_basic::fromPtr(lua_State* L, void* ptr) const {
-    return alien_value_basic::fromPtr(this, L, ptr);
+alien_value* alien_type_basic::from_ptr(lua_State* L, void* ptr) const {
+    return alien_value_basic::from_ptr(this, L, ptr);
 }
 
-alien_value* alien_type_basic::new_value() const {
-    return new alien_value_basic(this);
+alien_value* alien_type_basic::new_value(lua_State* L) const {
+    return new alien_value_basic(this, L);
 }
 
 bool alien_type_basic::is_integer() const {

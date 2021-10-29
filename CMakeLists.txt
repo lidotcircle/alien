@@ -35,7 +35,7 @@ set_target_properties(alien PROPERTIES
     PREFIX "")
 target_sources(alien PRIVATE
     src/alien.cpp
-    src/alien_lua_util.cpp
+    src/alien_dep_lua.cpp
     src/alien_library.cpp
     src/alien_function.cpp
 
@@ -53,6 +53,7 @@ target_sources(alien PRIVATE
     src/alien_value_buffer.cpp
     src/alien_value_pointer.cpp
     src/alien_value_ref.cpp
+    src/alien_value_string.cpp
     src/alien_value_struct.cpp
     src/alien_value_union.cpp
 

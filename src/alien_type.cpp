@@ -75,6 +75,7 @@ bool alien_type::is_double() const  { return false; }
 bool alien_type::is_basic() const   { return false; }
 bool alien_type::is_ref() const     { return false; }
 bool alien_type::is_pointer() const { return false; }
+bool alien_type::is_string() const { return false; }
 bool alien_type::is_struct() const  { return false; }
 bool alien_type::is_buffer() const  { return false; }
 bool alien_type::is_union() const   { return false; }

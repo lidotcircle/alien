@@ -32,7 +32,7 @@ class alien_value {
         virtual void assignFrom(const alien_value& val);
         virtual void assignFromLua(lua_State* L, size_t idx);
 
-        virtual void toLua(lua_State* L) const = 0;
+        virtual void to_lua(lua_State* L) const = 0;
         virtual alien_value* copy() const = 0;
         virtual ~alien_value() = default;
 };

@@ -1,0 +1,27 @@
+#include "alien_type_ref.h"
+#include "alien_value_ref.h"
+#include <ffi.h>
+
+static ffi_type ffi_type_ref = ffi_type_pointer;
+
+
+alien_type_ref::alien_type_ref(): alien_type("ref") {}
+
+ffi_type* alien_type_ref::ffitype() {
+    return &ffi_type_ref;
+}
+
+alien_value* alien_type_ref::from_lua(lua_State* L, int idx) const {
+    return alien_value_ref::from_lua(this, L, idx);
+}
+
+alien_value* alien_type_ref::from_ptr(lua_State* L, void* ptr) const {
+    return alien_value_ref::from_ptr(this, L, ptr);
+}
+
+alien_value* alien_type_ref::new_value(lua_State* L) const {
+    return alien_value_ref::new_value(this, L);
+}
+
+bool alien_type_ref::is_ref() const { return true; }
+

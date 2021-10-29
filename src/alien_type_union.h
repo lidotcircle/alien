@@ -19,8 +19,9 @@ class alien_type_union: public alien_type {
                          const std::vector<std::pair<std::string,alien_type*>>& members);
 
         virtual ffi_type* ffitype() override;
-        virtual alien_value* fromLua(lua_State* L, int idx) const override;
-        virtual alien_value* new_value() const override;
+        virtual alien_value* from_lua(lua_State* L, int idx) const override;
+        virtual alien_value* from_ptr(lua_State* L, void*) const override;
+        virtual alien_value* new_value(lua_State* L) const override;
 
         size_t sizeof_member(const std::string& member);
 

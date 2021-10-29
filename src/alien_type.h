@@ -26,9 +26,9 @@ class alien_type {
         virtual const std::string& __typename() const;
         virtual size_t __sizeof() const;
 
-        virtual alien_value* fromLua(lua_State* L, int idx) const = 0;
-        virtual alien_value* fromPtr(lua_State* L, void* ptr) const = 0;
-        virtual alien_value* new_value() const = 0;
+        virtual alien_value* from_lua(lua_State* L, int idx) const = 0;
+        virtual alien_value* from_ptr(lua_State* L, void* ptr) const = 0;
+        virtual alien_value* new_value(lua_State* L) const = 0;
 
         virtual bool is_integer() const;
         virtual bool is_signed() const;
@@ -39,6 +39,7 @@ class alien_type {
         virtual bool is_basic() const;
         virtual bool is_ref() const;
         virtual bool is_pointer() const;
+        virtual bool is_string() const;
         virtual bool is_struct() const;
         virtual bool is_buffer() const;
         virtual bool is_union() const;

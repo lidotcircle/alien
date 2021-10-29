@@ -36,12 +36,16 @@ class alien_value_callback: alien_value {
         virtual void assignFrom(const alien_value& val) override;
         virtual void assignFromLua(lua_State* L, size_t idx) override;
 
-        virtual void toLua(lua_State* L) const override;
+        virtual void to_lua(lua_State* L) const override;
         virtual alien_value* copy() const override;
 
         virtual ~alien_value_callback() override;
 
         static void callback_call(ffi_cif* cif, void *resp, void **args, void* data);
+
+        static alien_value* from_lua(const alien_type* type, lua_State* L, int idx);
+        static alien_value* from_ptr(const alien_type* type, lua_State* L, void* ptr);
+        static alien_value* new_value(const alien_type* type, lua_State* L);
 };
 
 #endif // _ALIEN_VALUE_CALLBACK_H_

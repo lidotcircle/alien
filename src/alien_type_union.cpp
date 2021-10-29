@@ -1,4 +1,5 @@
 #include "alien_type_union.h"
+#include "alien_value_union.h"
 #include <string>
 #include <vector>
 #include <stdexcept>
@@ -35,8 +36,16 @@ alien_type_union::~alien_type_union() {
     this->pffi_type = nullptr;
 }
 
-alien_value* alien_type_union::fromLua(lua_State* L, int idx) const {
-    // TODO
+alien_value* alien_type_union::from_lua(lua_State* L, int idx) const {
+    return alien_value_union::from_lua(this, L, idx);
+}
+
+alien_value* alien_type_union::from_ptr(lua_State* L, void* ptr) const {
+    return alien_value_union::from_ptr(this, L, ptr);
+}
+
+alien_value* alien_type_union::new_value(lua_State* L) const {
+    return alien_value_union::new_value(this, L);
 }
 
 size_t alien_type_union::sizeof_member(const std::string& member) {
@@ -45,7 +54,7 @@ size_t alien_type_union::sizeof_member(const std::string& member) {
             return m.second->ffitype()->size;
     }
 
-    return 0;
+    throw std::runtime_error("alien: member '" + member + "' not found");
 }
 
 bool alien_type_union::is_union() const { return true; }

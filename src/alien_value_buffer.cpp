@@ -60,7 +60,7 @@ void alien_value_buffer::assignFrom(const alien_value& val) {
     memcpy(this->_mem.get(), valb->_mem.get(), this->buf_len);
 }
 
-void alien_value_buffer::toLua(lua_State* L) const {
+void alien_value_buffer::to_lua(lua_State* L) const {
     auto vv = new alien_value_buffer(*this);
     alien_value_buffer** pvv = (alien_value_buffer**)lua_newuserdata(L, sizeof(alien_value_buffer*)); 
     *pvv = vv;

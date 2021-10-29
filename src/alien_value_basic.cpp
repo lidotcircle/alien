@@ -5,7 +5,7 @@
 alien_value_basic::alien_value_basic(const alien_type* type): alien_value(type) {}
 alien_value_basic::alien_value_basic(const alien_type* type, void* ptr): alien_value(type, ptr) {}
 
-void alien_value_basic::toLua(lua_State* L) const {
+void alien_value_basic::to_lua(lua_State* L) const {
     if (this->type->is_signed()) {
         switch (this->__sizeof()) {
             case 1:
@@ -53,7 +53,7 @@ alien_value* alien_value_basic::copy() const {
 }
 
 /** static */
-alien_value* alien_value_basic::fromLua(const alien_type* type, lua_State* L, int idx) {
+alien_value* alien_value_basic::from_lua(const alien_type* type, lua_State* L, int idx) {
     if (!lua_isnumber(L, idx)) {
         luaL_error(L, "alien: expect number");
         return nullptr;
@@ -103,7 +103,7 @@ alien_value* alien_value_basic::fromLua(const alien_type* type, lua_State* L, in
 }
 
 /** static */
-alien_value* alien_value_basic::fromPtr(const alien_type* type, lua_State* L, void* ptr) {
+alien_value* alien_value_basic::from_ptr(const alien_type* type, lua_State* L, void* ptr) {
     auto ans = new alien_value_basic(type);
 
     if (type->is_signed()) {

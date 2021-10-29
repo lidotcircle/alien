@@ -1,4 +1,5 @@
 #include "alien_type_struct.h"
+#include "alien_value_struct.h"
 #include <string>
 #include <vector>
 #include <stdexcept>
@@ -51,12 +52,20 @@ bool alien_type_struct::has_member(const std::string& member) {
     return false;
 }
 
-alien_value* alien_type_struct::fromLua(lua_State* L, int idx) const {
-    // TODO
-}
-
 ffi_type* alien_type_struct::ffitype() {
     return this->pffi_type;
+}
+
+alien_value* alien_type_struct::from_lua(lua_State* L, int idx) const {
+    return alien_value_struct::from_lua(this, L, idx);
+}
+
+alien_value* alien_type_struct::from_ptr(lua_State* L, void* ptr) const {
+    return alien_value_struct::from_ptr(this, L, ptr);
+}
+
+alien_value* alien_type_struct::new_value(lua_State* L) const {
+    return alien_value_struct::new_value(this, L);
 }
 
 size_t alien_type_struct::__offsetof(const std::string& member) {
@@ -67,6 +76,9 @@ size_t alien_type_struct::__offsetof(const std::string& member) {
             break;
         }
     }
+
+    if (n == -1)
+        throw std::runtime_error("alien: can't find offset of '" + member + "'");
 
     return this->member_offs[n];
 }

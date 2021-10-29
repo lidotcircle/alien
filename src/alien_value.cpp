@@ -51,7 +51,7 @@ void alien_value::assignFrom(const alien_value& val) {
 }
 
 void alien_value::assignFromLua(lua_State* L, size_t idx) {
-    auto v = this->type->fromLua(L, idx);
+    auto v = this->type->from_lua(L, idx);
     this->assignFrom(*v);
     delete v;
 }

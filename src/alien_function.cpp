@@ -271,20 +271,20 @@ int alien_Function::call_from_lua(lua_State *L) {
     if(nargs > 0) args = make_unique<void*[]>(nargs);
     vector<std::unique_ptr<alien_value>> values;
     for(i = 0; i < nargs; i++) {
-        alien_value* val = this->params[i]->fromLua(L, i + 2);
+        alien_value* val = this->params[i]->from_lua(L, i + 2);
         args[i] = val->ptr();
         values.push_back(std::unique_ptr<alien_value>(val));
     }
-    std::unique_ptr<alien_value> ret(this->ret_type->new_value());
+    std::unique_ptr<alien_value> ret(this->ret_type->new_value(L));
     ffi_call(&this->cif, reinterpret_cast<void(*)()>(this->fn), ret->ptr(), args.get());
-    ret->toLua(L);
+    ret->to_lua(L);
 
     int nref = 0;
     for (size_t i=0;i<values.size();i++) {
         auto vt = this->params[i];
 
         if (vt->is_ref() && vt->is_basic()) {
-            values[i]->toLua(L);
+            values[i]->to_lua(L);
             nref++;
         }
     }
