@@ -13,6 +13,10 @@ alien_value* alien_type_buffer::fromLua(lua_State* L, int idx) const {
     return nullptr;
 }
 
+alien_value* alien_type_buffer::fromPtr(lua_State* L, void* ptr) const {
+    return nullptr;
+}
+
 alien_value* alien_type_buffer::new_value() const {
 }
 

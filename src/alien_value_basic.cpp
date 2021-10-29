@@ -102,3 +102,46 @@ alien_value* alien_value_basic::fromLua(const alien_type* type, lua_State* L, in
     return ans;
 }
 
+/** static */
+alien_value* alien_value_basic::fromPtr(const alien_type* type, lua_State* L, void* ptr) {
+    auto ans = new alien_value_basic(type);
+
+    if (type->is_signed()) {
+        switch (type->__sizeof()) {
+            case 1:
+                *static_cast<int8_t* >(ans->ptr()) = *static_cast<int8_t *>(ptr); break;
+            case 2:
+                *static_cast<int16_t*>(ans->ptr()) = *static_cast<int16_t*>(ptr); break;
+            case 4:
+                *static_cast<int32_t*>(ans->ptr()) = *static_cast<int32_t*>(ptr); break;
+            case 8:
+                *static_cast<int64_t*>(ans->ptr()) = *static_cast<int64_t*>(ptr); break;
+            default:
+                luaL_error(L, "alien: unexpected integer size");
+        }
+    } else if (type->is_integer()) {
+        switch (type->__sizeof()) {
+            case 1:
+                *static_cast<uint8_t* >(ans->ptr()) = *static_cast<uint8_t *>(ptr); break;
+            case 2:
+                *static_cast<uint16_t*>(ans->ptr()) = *static_cast<uint16_t*>(ptr); break;
+            case 4:
+                *static_cast<uint32_t*>(ans->ptr()) = *static_cast<uint32_t*>(ptr); break;
+            case 8:
+                *static_cast<uint64_t*>(ans->ptr()) = *static_cast<uint64_t*>(ptr); break;
+            default:
+                luaL_error(L, "alien: unexpected integer size");
+        }
+    } else if (type->is_float()) {
+        *static_cast<float*>(ans->ptr()) = *static_cast<float*>(ptr);
+    } else if (type->is_double()) {
+        *static_cast<double*>(ans->ptr()) = *static_cast<double*>(ptr);
+    } else if (type->is_rawpointer()) {
+        *static_cast<void**>(ans->ptr()) = *static_cast<void**>(ptr);
+    } else {
+        luaL_error(L, "alien: unexpected basic type");
+    }
+
+    return ans;
+}
+

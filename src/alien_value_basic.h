@@ -14,6 +14,7 @@ class alien_value_basic: public alien_value {
         virtual alien_value* copy() const override;
 
         static alien_value* fromLua(const alien_type* type, lua_State* L, int idx);
+        static alien_value* fromPtr(const alien_type* type, lua_State* L, void* ptr);
 };
 
 #endif // _ALIEN_VALUE_BASIC_H_

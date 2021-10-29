@@ -10,6 +10,7 @@
 
 class alien_value_callback: alien_value {
     private:
+        size_t ref_count;
         ffi_closure* closure;
         void* ffi_codeloc;
         lua_State* L;
@@ -24,6 +25,10 @@ class alien_value_callback: alien_value {
         alien_value_callback(const alien_type* type,
                              lua_State* L, int funcidx,
                              ffi_abi abi, alien_type* ret, const std::vector<alien_type*>& params);
+
+        void ref_dec() const;
+        void ref_inc() const;
+        bool noref() const;
 
         virtual void* ptr() override;
         virtual const void* ptr() const override;

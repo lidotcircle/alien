@@ -36,6 +36,10 @@ alien_value* alien_type_basic::fromLua(lua_State* L, int idx) const {
     return alien_value_basic::fromLua(this, L, idx);
 }
 
+alien_value* alien_type_basic::fromPtr(lua_State* L, void* ptr) const {
+    return alien_value_basic::fromPtr(this, L, ptr);
+}
+
 alien_value* alien_type_basic::new_value() const {
     return new alien_value_basic(this);
 }

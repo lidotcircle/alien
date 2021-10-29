@@ -27,6 +27,7 @@ class alien_type {
         virtual size_t __sizeof() const;
 
         virtual alien_value* fromLua(lua_State* L, int idx) const = 0;
+        virtual alien_value* fromPtr(lua_State* L, void* ptr) const = 0;
         virtual alien_value* new_value() const = 0;
 
         virtual bool is_integer() const;
