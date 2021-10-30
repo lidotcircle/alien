@@ -18,6 +18,9 @@ class alien_type_ref: public alien_type {
         const alien_type* ref_type() const;
         alien_type* ref_type();
 
+        virtual bool is_this_type(lua_State* L, int idx) const override;
+        virtual alien_value* checkvalue(lua_State* L, int idx) const override;
+
         virtual bool is_ref() const override;
 };
 

@@ -163,3 +163,15 @@ alien_value* alien_value_callback::new_value(const alien_type* type, lua_State* 
     throw std::runtime_error("alien: can't create callback");
 }
 
+/** static */
+bool alien_value_callback::is_this_value(const alien_type* type, lua_State* L, int idx) {
+    assert(type->is_callback());
+    return alien_iscallback(L, idx);
+}
+
+/** static */
+alien_value_callback* alien_value_callback::checkvalue(const alien_type* type, lua_State* L, int idx) {
+    assert(type->is_callback());
+    return alien_checkcallback(L, idx);
+}
+

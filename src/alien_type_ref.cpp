@@ -33,3 +33,11 @@ alien_type* alien_type_ref::ref_type() {
 
 bool alien_type_ref::is_ref() const { return true; }
 
+bool alien_type_ref::is_this_type(lua_State* L, int idx) const {
+    return alien_value_ref::is_this_value(this, L, idx);
+}
+
+alien_value* alien_type_ref::checkvalue(lua_State* L, int idx) const {
+    return alien_value_ref::checkvalue(this, L, idx);
+}
+

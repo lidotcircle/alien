@@ -26,3 +26,11 @@ alien_value* alien_type_callback::new_value(lua_State* L) const {
 
 bool alien_type_callback::is_callback() const { return true; }
 
+bool alien_type_callback::is_this_type(lua_State* L, int idx) const {
+    return alien_value_callback::is_this_value(this, L, idx);
+}
+
+alien_value* alien_type_callback::checkvalue(lua_State* L, int idx) const {
+    return alien_value_callback::checkvalue(this, L, idx);
+}
+

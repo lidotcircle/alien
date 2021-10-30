@@ -34,3 +34,11 @@ alien_type* alien_type_pointer::ptr_type() {
 
 bool alien_type_pointer::is_pointer() const { return true; }
 
+bool alien_type_pointer::is_this_type(lua_State* L, int idx) const {
+    return alien_value_pointer::is_this_value(this, L, idx);
+}
+
+alien_value* alien_type_pointer::checkvalue(lua_State* L, int idx) const {
+    return alien_value_pointer::checkvalue(this, L, idx);
+}
+

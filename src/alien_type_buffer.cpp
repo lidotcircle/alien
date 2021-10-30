@@ -26,3 +26,11 @@ bool alien_type_buffer::is_buffer() const { return true; }
 
 alien_type_buffer::~alien_type_buffer() {}
 
+bool alien_type_buffer::is_this_type(lua_State* L, int idx) const {
+    return alien_value_buffer::is_this_value(this, L, idx);
+}
+
+alien_value* alien_type_buffer::checkvalue(lua_State* L, int idx) const {
+    return alien_value_buffer::checkvalue(this, L, idx);
+}
+

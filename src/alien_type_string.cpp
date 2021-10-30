@@ -23,3 +23,11 @@ alien_value* alien_type_string::new_value(lua_State* L) const {
 
 bool alien_type_string::is_string() const { return true; }
 
+bool alien_type_string::is_this_type(lua_State* L, int idx) const {
+    return alien_value_string::is_this_value(this, L, idx);
+}
+
+alien_value* alien_type_string::checkvalue(lua_State* L, int idx) const {
+    return alien_value_string::checkvalue(this, L, idx);
+}
+

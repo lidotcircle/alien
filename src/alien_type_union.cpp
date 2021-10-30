@@ -58,3 +58,12 @@ size_t alien_type_union::sizeof_member(const std::string& member) {
 }
 
 bool alien_type_union::is_union() const { return true; }
+
+bool alien_type_union::is_this_type(lua_State* L, int idx) const {
+    return alien_value_union::is_this_value(this, L, idx);
+}
+
+alien_value* alien_type_union::checkvalue(lua_State* L, int idx) const {
+    return alien_value_union::checkvalue(this, L, idx);
+}
+

@@ -173,7 +173,10 @@ alien_value* alien_value_ref::from_lua(const alien_type* type, lua_State* L, int
         return new alien_value_ref(type);
     } else if (reft->is_this_type(L, idx)) {
         alien_value* v = reft->checkvalue(L, idx);
-        return new alien_value_ref(type, v->_mem, v->ptr());
+        auto ans = new alien_value_ref(type, v->_mem, v->ptr());
+        if (reft->is_basic() || reft->is_string())
+            delete v;
+        return ans;
     } else if (alien_isref(L, idx)) {
         alien_value_ref* ptr = alien_checkref(L, idx);
         return ptr->copy();
@@ -192,5 +195,17 @@ alien_value* alien_value_ref::from_ptr(const alien_type* type, lua_State* L, voi
 /** static */
 alien_value* alien_value_ref::new_value(const alien_type* type, lua_State* L) {
     return new alien_value_ref(type);
+}
+
+/** static */
+bool alien_value_ref::is_this_value(const alien_type* type, lua_State* L, int idx) {
+    assert(type->is_ref());
+    return alien_isref(L, idx);
+}
+
+/** static */
+alien_value_ref* alien_value_ref::checkvalue(const alien_type* type, lua_State* L, int idx) {
+    assert(type->is_ref());
+    return alien_checkref(L, idx);
 }
 

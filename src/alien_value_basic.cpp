@@ -1,5 +1,6 @@
 #include "alien_value_basic.h"
 #include <memory>
+#include <assert.h>
 #include <string.h>
 
 
@@ -144,6 +145,25 @@ alien_value* alien_value_basic::from_ptr(const alien_type* type, lua_State* L, v
         luaL_error(L, "alien: unexpected basic type");
     }
 
+    return ans;
+}
+
+/** static */
+bool alien_value_basic::is_this_value(const alien_type* type, lua_State* L, int idx) {
+    assert(type->is_basic());
+    return lua_isnumber(L, idx);
+}
+
+/** static */
+alien_value_basic* alien_value_basic::checkvalue(const alien_type* type, lua_State* L, int idx) {
+    assert(type->is_basic());
+    if (!lua_isnumber(L, idx)) {
+        luaL_error(L, "alien: expect number");
+        return nullptr;
+    }
+
+    auto ans = dynamic_cast<alien_value_basic*>(type->from_lua(L, idx));
+    assert(ans != nullptr);
     return ans;
 }
 

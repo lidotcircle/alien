@@ -18,6 +18,9 @@ class alien_type_buffer: public alien_type {
 
         virtual bool is_buffer() const override;
 
+        virtual bool is_this_type(lua_State* L, int idx) const override;
+        virtual alien_value* checkvalue(lua_State* L, int idx) const override;
+
         ~alien_type_buffer();
 };
 

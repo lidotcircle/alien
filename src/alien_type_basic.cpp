@@ -71,3 +71,12 @@ bool alien_type_basic::is_void() const {
 bool alien_type_basic::is_basic() const { return true; }
 
 alien_type_basic::~alien_type_basic() { }
+
+bool alien_type_basic::is_this_type(lua_State* L, int idx) const {
+    return alien_value_basic::is_this_value(this, L, idx);
+}
+
+alien_value* alien_type_basic::checkvalue(lua_State* L, int idx) const {
+    return alien_value_basic::checkvalue(this, L, idx);
+}
+

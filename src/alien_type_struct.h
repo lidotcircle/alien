@@ -27,6 +27,9 @@ class alien_type_struct: public alien_type {
         bool   has_member(const std::string& member);
         size_t __offsetof(const std::string& member);
 
+        virtual bool is_this_type(lua_State* L, int idx) const override;
+        virtual alien_value* checkvalue(lua_State* L, int idx) const override;
+
         virtual bool is_struct() const override;
         virtual ~alien_type_struct() override;
 };

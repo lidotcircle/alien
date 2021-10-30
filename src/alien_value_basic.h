@@ -17,6 +17,9 @@ class alien_value_basic: public alien_value {
         static alien_value* from_lua(const alien_type* type, lua_State* L, int idx);
         static alien_value* from_ptr(const alien_type* type, lua_State* L, void* ptr);
         static alien_value* new_value(const alien_type* type, lua_State* L);
+
+        static bool is_this_value(const alien_type* type, lua_State* L, int idx);
+        static alien_value_basic* checkvalue(const alien_type* type, lua_State* L, int idx);
 };
 
 #endif // _ALIEN_VALUE_BASIC_H_

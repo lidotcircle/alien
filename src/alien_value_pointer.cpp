@@ -204,3 +204,15 @@ alien_value* alien_value_pointer::new_value(const alien_type* type, lua_State* L
     return new alien_value_pointer(type);
 }
 
+/** static */
+bool alien_value_pointer::is_this_value(const alien_type* type, lua_State* L, int idx) {
+    assert(type->is_pointer());
+    return alien_ispointer(L, idx);
+}
+
+/** static */
+alien_value_pointer* alien_value_pointer::checkvalue(const alien_type* type, lua_State* L, int idx) {
+    assert(type->is_pointer());
+    return alien_checkpointer(L, idx);
+}
+

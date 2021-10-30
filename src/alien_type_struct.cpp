@@ -85,3 +85,11 @@ size_t alien_type_struct::__offsetof(const std::string& member) {
 
 bool alien_type_struct::is_struct() const { return true; }
 
+bool alien_type_struct::is_this_type(lua_State* L, int idx) const {
+    return alien_value_struct::is_this_value(this, L, idx);
+}
+
+alien_value* alien_type_struct::checkvalue(lua_State* L, int idx) const {
+    return alien_value_struct::checkvalue(this, L, idx);
+}
+

@@ -25,6 +25,9 @@ class alien_type_union: public alien_type {
 
         size_t sizeof_member(const std::string& member);
 
+        virtual bool is_this_type(lua_State* L, int idx) const override;
+        virtual alien_value* checkvalue(lua_State* L, int idx) const override;
+
         virtual bool is_union() const override;
         virtual ~alien_type_union() override;
 };

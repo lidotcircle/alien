@@ -28,6 +28,9 @@ class alien_type_basic: public alien_type {
         virtual bool is_void()       const override;
         virtual bool is_basic()      const override;
 
+        virtual bool is_this_type(lua_State* L, int idx) const override;
+        virtual alien_value* checkvalue(lua_State* L, int idx) const override;
+
         virtual ~alien_type_basic() override;
 };
 

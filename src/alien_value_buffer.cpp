@@ -1,5 +1,6 @@
 #include "alien_value_buffer.h"
 #include <string.h>
+#include <assert.h>
 using namespace std;
 
 #define ALIEN_VALUE_BUFFER_META "alien_value_buffer_meta"
@@ -78,19 +79,10 @@ alien_value* alien_value_buffer::copy() const {
 static bool alien_isbuffer(lua_State* L, int idx) {
     return luaL_testudata(L, idx, ALIEN_VALUE_BUFFER_META) != nullptr;
 }
-static alien_value_buffer** alien_checkbuffer(lua_State* L, int idx) {
-    return (alien_value_buffer**)luaL_checkudata(L, idx, ALIEN_VALUE_BUFFER_META);
+static alien_value_buffer* alien_checkbuffer(lua_State* L, int idx) {
+    return *static_cast<alien_value_buffer**>(luaL_checkudata(L, idx, ALIEN_VALUE_BUFFER_META));
 }
 
-/** static */
-bool alien_value_buffer::is_value_buffer(lua_State* L, int idx) {
-    return alien_isbuffer(L, idx);
-}
-/** static */
-alien_value_buffer* alien_value_buffer::check_value_buffer(lua_State* L, int idx) {
-    alien_value_buffer** pvb = alien_checkbuffer(L, idx);
-    return *pvb;
-}
 
 static int alien_buffer_gc(lua_State* L);
 #define MENTRY(n, t) static int alien_buffer_get_##n(lua_State* L); \
@@ -124,15 +116,13 @@ buffer_access_type
 }
 
 static int alien_buffer_gc(lua_State* L) {
-    alien_value_buffer** pvb = alien_checkbuffer(L, 1);
-    delete *pvb;
-    *pvb = nullptr;
+    alien_value_buffer* vb = alien_checkbuffer(L, 1);
+    delete vb;
     return 0;
 }
 #define MENTRY(n, t) \
     static int alien_buffer_get_##n(lua_State* L) { \
-        alien_value_buffer** pvb = alien_checkbuffer(L, 1); \
-        alien_value_buffer* vb = *pvb; \
+        alien_value_buffer* vb = alien_checkbuffer(L, 1); \
         size_t index = luaL_checkinteger(L, 2); \
         size_t off = 0; \
         if (lua_gettop(L) > 2) \
@@ -142,8 +132,7 @@ static int alien_buffer_gc(lua_State* L) {
         return 1; \
     } \
     static int alien_buffer_set_##n(lua_State* L) { \
-        alien_value_buffer** pvb = alien_checkbuffer(L, 1); \
-        alien_value_buffer* vb = *pvb; \
+        alien_value_buffer* vb = alien_checkbuffer(L, 1); \
         size_t index = luaL_checkinteger(L, 2); \
         t val = luaL_checknumber(L, 3); \
         size_t off = 0; \
@@ -154,4 +143,16 @@ static int alien_buffer_gc(lua_State* L) {
     }
 buffer_access_type
 #undef MENTRY
+
+/** static */
+bool alien_value_buffer::is_this_value(const alien_type* type, lua_State* L, int idx) {
+    assert(type->is_buffer());
+    return alien_isbuffer(L, idx);
+}
+
+/** static */
+alien_value_buffer* alien_value_buffer::checkvalue(const alien_type* type, lua_State* L, int idx) {
+    assert(type->is_buffer());
+    return alien_checkbuffer(L, idx);
+}
 

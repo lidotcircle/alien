@@ -18,6 +18,9 @@ class alien_value_struct: public alien_value {
         static alien_value* from_lua(const alien_type* type, lua_State* L, int idx);
         static alien_value* from_ptr(const alien_type* type, lua_State* L, void* ptr);
         static alien_value* new_value(const alien_type* type, lua_State* L);
+
+        static bool is_this_value(const alien_type* type, lua_State* L, int idx);
+        static alien_value_struct* checkvalue(const alien_type* type, lua_State* L, int idx);
 };
 
 #endif // _ALIEN_VALUE_STRUCT_H_
