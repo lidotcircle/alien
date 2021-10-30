@@ -1,9 +1,11 @@
 #include "alien_value_basic.h"
+#include <memory>
 #include <string.h>
 
 
 alien_value_basic::alien_value_basic(const alien_type* type): alien_value(type) {}
 alien_value_basic::alien_value_basic(const alien_type* type, void* ptr): alien_value(type, ptr) {}
+alien_value_basic::alien_value_basic(const alien_type* type, std::shared_ptr<char> mem, void* ptr): alien_value(type, mem, ptr) {}
 
 void alien_value_basic::to_lua(lua_State* L) const {
     if (this->type->is_signed()) {

@@ -10,7 +10,7 @@ class alien_value_union: public alien_value {
         alien_value_union(const alien_type* type, const alien_type* ref_type);
         alien_value_union(const alien_type* type, const alien_type* ref_type, void* ptr);
 
-        alien_value* getMember(const std::string& member);
+        alien_value* get_member(const std::string& member);
 
         virtual void to_lua(lua_State* L) const override;
         virtual alien_value* copy() const override;

@@ -20,13 +20,13 @@ class alien_type_basic: public alien_type {
         virtual alien_value* from_ptr(lua_State* L, void* ptr) const override;
         virtual alien_value* new_value(lua_State* L) const override;
 
-        virtual bool is_integer() const override;
-        virtual bool is_signed()  const override;
-        virtual bool is_float()   const override;
-        virtual bool is_double()  const override;
+        virtual bool is_integer()    const override;
+        virtual bool is_signed()     const override;
+        virtual bool is_float()      const override;
+        virtual bool is_double()     const override;
         virtual bool is_rawpointer() const override;
-        virtual bool is_void() const override;
-        virtual bool is_basic()   const override;
+        virtual bool is_void()       const override;
+        virtual bool is_basic()      const override;
 
         virtual ~alien_type_basic() override;
 };

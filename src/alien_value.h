@@ -10,12 +10,16 @@
  * create new lua value and push to stack */
 int alien_operator_method_new(lua_State* L, alien_type* type);
 
+/* forward declaration */
+class alien_value_ref;
+
 
 class alien_value {
     protected:
         const alien_type* type;
         std::shared_ptr<char> _mem;
         void* val_ptr;
+        friend class alien_value_ref;
 
     public:
         alien_value() = delete;

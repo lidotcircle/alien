@@ -5,7 +5,7 @@
 static ffi_type ffi_type_ref = ffi_type_pointer;
 
 
-alien_type_ref::alien_type_ref(): alien_type("ref") {}
+alien_type_ref::alien_type_ref(alien_type* reftype): alien_type("ref"), _ref_type(reftype) {}
 
 ffi_type* alien_type_ref::ffitype() {
     return &ffi_type_ref;
@@ -21,6 +21,14 @@ alien_value* alien_type_ref::from_ptr(lua_State* L, void* ptr) const {
 
 alien_value* alien_type_ref::new_value(lua_State* L) const {
     return alien_value_ref::new_value(this, L);
+}
+
+const alien_type* alien_type_ref::ref_type() const {
+    return this->_ref_type;
+}
+
+alien_type* alien_type_ref::ref_type() {
+    return this->_ref_type;
 }
 
 bool alien_type_ref::is_ref() const { return true; }

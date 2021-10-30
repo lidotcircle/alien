@@ -9,6 +9,7 @@ class alien_value_basic: public alien_value {
     public:
         alien_value_basic(const alien_type* type);
         alien_value_basic(const alien_type* type, void* ptr);
+        alien_value_basic(const alien_type* type, std::shared_ptr<char> mem, void* ptr);
 
         virtual void to_lua(lua_State* L) const override;
         virtual alien_value* copy() const override;

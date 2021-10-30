@@ -2,3 +2,5 @@
 build/
 build64/
 .vscode/
+.cache/
+
