@@ -1,7 +1,8 @@
 #include "alien_library.h"
 #include "alien_function.h"
-#include "alien_type.h"
 #include "alien_dep_lua.h"
+#include "alien_type.h"
+#include "alien_value.h"
 #include "alien.h"
 
 #define MYNAME    "alien"
@@ -69,6 +70,7 @@ extern "C" __EXPORT int luaopen_alien_c(lua_State *L) {
     alien_library_init (L);
     alien_function_init(L);
     alien_types_init   (L);
+    alien_value_init   (L);
 
     return 1;
 }

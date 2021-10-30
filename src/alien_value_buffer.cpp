@@ -6,13 +6,20 @@ using namespace std;
 #define ALIEN_VALUE_BUFFER_META "alien_value_buffer_meta"
 
 
-alien_value_buffer::alien_value_buffer(class alien_type* type, size_t n):
-    alien_value(type, nullptr), pptr(nullptr), buf_len(n)
+alien_value_buffer::alien_value_buffer(const alien_type* type, size_t n):
+    alien_value(type), buf_len(n)
 {
-    if (n > 0) {
-        this->_mem = shared_ptr<char>(new char[n], [](char* ptr) {delete ptr;});
-        pptr = this->_mem.get();
-    }
+    if (n > 0)
+        this->buf = shared_ptr<char>(new char[n], std::default_delete<char[]>());
+    *static_cast<void**>(this->ptr()) = this->buf.get();
+}
+
+alien_value_buffer::alien_value_buffer(const alien_value_buffer& other):
+    alien_value(other.alientype()), buf_len(0) 
+{
+    this->buf_len = other.buf_len;
+    this->buf = other.buf;
+    *static_cast<void**>(this->ptr()) = this->buf.get();
 }
 
 static bool in_range(size_t len, size_t s, size_t idx, size_t off) {
@@ -22,8 +29,8 @@ static bool in_range(size_t len, size_t s, size_t idx, size_t off) {
 #define MENTRY(n, t) t alien_value_buffer::get_##n(lua_State* L, size_t nn, size_t off) const { \
     if (!in_range(this->buf_len, sizeof(t), nn, off)) \
         return luaL_error(L, "alien: access buffer out of range (type = %s)", #t); \
-    void* ptr = static_cast<char*>(this->pptr) + off;\
-    return static_cast<t*>(ptr)[nn]; \
+    const void* ptr = *static_cast<char* const*>(this->ptr()) + off;\
+    return static_cast<const t*>(ptr)[nn]; \
 }
 buffer_access_type
 #undef MENTRY
@@ -33,19 +40,11 @@ buffer_access_type
         luaL_error(L, "alien: access buffer out of range (type = %s)", #t); \
         return; \
     } \
-    void* ptr = static_cast<char*>(this->pptr) + off;\
+    void* ptr = *static_cast<char**>(this->ptr()) + off;\
     static_cast<t*>(ptr)[nn] = val; \
 }
 buffer_access_type
 #undef MENTRY
-
-void* alien_value_buffer::ptr() {
-    return &this->pptr;
-}
-
-const void* alien_value_buffer::ptr() const {
-    return &this->pptr;
-}
 
 void alien_value_buffer::assignFrom(const alien_value& val) {
     if (val.alientype() != this->alientype())
@@ -56,9 +55,9 @@ void alien_value_buffer::assignFrom(const alien_value& val) {
         throw std::runtime_error("alien: nope nope buffer error");
 
     this->buf_len = valb->buf_len;
-    this->_mem = std::shared_ptr<char>(new char[valb->buf_len], [](char* ptr) {delete[] ptr;});
-    this->pptr = this->_mem.get();
-    memcpy(this->_mem.get(), valb->_mem.get(), this->buf_len);
+    this->buf = std::shared_ptr<char>(new char[valb->buf_len], std::default_delete<char[]>());
+    memcpy(this->ptr(), valb->ptr(), this->buf_len);
+    *static_cast<void**>(this->ptr()) = this->buf.get();
 }
 
 void alien_value_buffer::to_lua(lua_State* L) const {
@@ -70,9 +69,9 @@ void alien_value_buffer::to_lua(lua_State* L) const {
 
 alien_value* alien_value_buffer::copy() const {
     auto vv = new alien_value_buffer(*this);
-    vv->_mem = std::shared_ptr<char>(new char[vv->buf_len], [](char* ptr) {delete[] ptr;});
-    vv->pptr = vv->_mem.get();
+    vv->buf = std::shared_ptr<char>(new char[vv->buf_len], std::default_delete<char[]>());
     memcpy(vv->_mem.get(), this->_mem.get(), this->buf_len);
+    *static_cast<void**>(vv->ptr()) = vv->buf.get();
     return vv;
 }
 
@@ -143,6 +142,26 @@ static int alien_buffer_gc(lua_State* L) {
     }
 buffer_access_type
 #undef MENTRY
+
+
+/** static */
+alien_value* alien_value_buffer::from_lua(const alien_type* type, lua_State* L, int idx) {
+    if (!alien_isbuffer(L, idx))
+        return nullptr;
+
+    alien_value_buffer* vb = alien_checkbuffer(L, idx);
+    return vb->copy();
+}
+
+/** static */
+alien_value* alien_value_buffer::from_ptr(const alien_type* type, lua_State* L, void* ptr) {
+    return nullptr;
+}
+
+/** static */
+alien_value* alien_value_buffer::new_value(const alien_type* type, lua_State* L) {
+    return nullptr;
+}
 
 /** static */
 bool alien_value_buffer::is_this_value(const alien_type* type, lua_State* L, int idx) {

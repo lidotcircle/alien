@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <memory>
 using namespace std;
 
 
@@ -16,7 +17,7 @@ alien_type_struct::alien_type_struct(const std::string& t,
     this->pffi_type->elements = new ffi_type*[members.size() + 1];
     this->pffi_type->size = 0;
     this->pffi_type->alignment = 0;
-    this->member_offs = new size_t[this->members.size() + 1];
+    std::shared_ptr<size_t> memoffs(new size_t[this->members.size() + 1], std::default_delete<size_t[]>());
 
     for(size_t i=0;i<members.size();i++) {
         auto& memtype = members[i];
@@ -28,28 +29,21 @@ alien_type_struct::alien_type_struct(const std::string& t,
     if (ffi_prep_cif(&cif, this->abi, 0, this->pffi_type, nullptr) != FFI_OK)
         throw std::runtime_error("can't create ffi struct type");
 
-    if (ffi_get_struct_offsets(this->abi, this->pffi_type, this->member_offs) != FFI_OK)
+    if (ffi_get_struct_offsets(this->abi, this->pffi_type, memoffs.get()) != FFI_OK)
         throw std::runtime_error("can't get member offsets of ffi struct type");
 
-    this->members = members;
+    for(size_t i=0;i<members.size();i++) {
+        auto& mb = members[i];
+        if (this->members.find(mb.first) != this->members.end())
+            throw std::runtime_error("alien: struct with duplicate member '" + mb.first + "'");
+        this->members[mb.first] = std::make_pair(memoffs.get()[i], mb.second);
+    }
 }
 
 alien_type_struct::~alien_type_struct() {
     delete[] this->pffi_type->elements;
     delete this->pffi_type;
     this->pffi_type = nullptr;
-
-    delete[] this->member_offs;
-    this->member_offs = nullptr;
-}
-
-bool alien_type_struct::has_member(const std::string& member) {
-    for (auto& m: this->members) {
-        if (m.first == member)
-            return true;
-    }
-
-    return false;
 }
 
 ffi_type* alien_type_struct::ffitype() {
@@ -68,19 +62,15 @@ alien_value* alien_type_struct::new_value(lua_State* L) const {
     return alien_value_struct::new_value(this, L);
 }
 
-size_t alien_type_struct::__offsetof(const std::string& member) {
-    int n = -1;
-    for (size_t i=0;i<this->members.size();i++) {
-        if (member == this->members[i].first) {
-            n = i;
-            break;
-        }
-    }
+std::unique_ptr<alien_type_struct::_member_info> 
+    alien_type_struct::member_info(const std::string& member) const 
+{
+    auto it = this->members.find(member);
+    if (it == this->members.end())
+        return nullptr;
 
-    if (n == -1)
-        throw std::runtime_error("alien: can't find offset of '" + member + "'");
-
-    return this->member_offs[n];
+    auto info = it->second;
+    return std::unique_ptr<_member_info>(new _member_info(info.second, info.first));
 }
 
 bool alien_type_struct::is_struct() const { return true; }

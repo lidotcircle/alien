@@ -22,4 +22,7 @@ class alien_value_basic: public alien_value {
         static alien_value_basic* checkvalue(const alien_type* type, lua_State* L, int idx);
 };
 
+
+int alien_value_basic_init(lua_State* L);
+
 #endif // _ALIEN_VALUE_BASIC_H_

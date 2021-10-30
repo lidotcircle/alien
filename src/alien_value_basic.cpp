@@ -167,3 +167,8 @@ alien_value_basic* alien_value_basic::checkvalue(const alien_type* type, lua_Sta
     return ans;
 }
 
+
+int alien_value_basic_init(lua_State* L) {
+    return 0;
+}
+

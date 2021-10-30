@@ -56,3 +56,25 @@ void alien_value::assignFromLua(lua_State* L, size_t idx) {
     delete v;
 }
 
+
+#include "alien_value_basic.h"
+#include "alien_value_buffer.h"
+#include "alien_value_callback.h"
+#include "alien_value_pointer.h"
+#include "alien_value_ref.h"
+#include "alien_value_string.h"
+#include "alien_value_struct.h"
+#include "alien_value_union.h"
+int alien_value_init(lua_State* L) {
+    alien_value_basic_init(L);
+    alien_value_buffer_init(L);
+    alien_value_callback_init(L);
+    alien_value_pointer_init(L);
+    alien_value_ref_init(L);
+    alien_value_string_init(L);
+    alien_value_struct_init(L);
+    alien_value_union_init(L);
+
+    return 0;
+}
+

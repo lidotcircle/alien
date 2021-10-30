@@ -12,6 +12,7 @@ int alien_operator_method_new(lua_State* L, alien_type* type);
 
 /* forward declaration */
 class alien_value_ref;
+class alien_type;
 
 
 class alien_value {
@@ -19,6 +20,7 @@ class alien_value {
         const alien_type* type;
         std::shared_ptr<char> _mem;
         void* val_ptr;
+        friend class alien_type;
         friend class alien_value_ref;
 
     public:
@@ -40,5 +42,8 @@ class alien_value {
         virtual alien_value* copy() const = 0;
         virtual ~alien_value() = default;
 };
+
+
+int alien_value_init(lua_State* L);
 
 #endif // _ALIEN_VALUE_H_

@@ -36,12 +36,13 @@ set_target_properties(alien PROPERTIES
 target_sources(alien PRIVATE
     src/alien.cpp
     src/alien_dep_lua.cpp
-    src/alien_library.cpp
     src/alien_function.cpp
+    src/alien_library.cpp
 
     src/alien_type.cpp
     src/alien_type_basic.cpp
     src/alien_type_buffer.cpp
+    src/alien_type_callback.cpp
     src/alien_type_pointer.cpp
     src/alien_type_ref.cpp
     src/alien_type_string.cpp
@@ -51,6 +52,7 @@ target_sources(alien PRIVATE
     src/alien_value.cpp
     src/alien_value_basic.cpp
     src/alien_value_buffer.cpp
+    src/alien_value_callback.cpp
     src/alien_value_pointer.cpp
     src/alien_value_ref.cpp
     src/alien_value_string.cpp

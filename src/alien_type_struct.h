@@ -5,14 +5,24 @@
 #include "alien_type.h"
 #include <string>
 #include <vector>
+#include <memory>
+#include <map>
 
 
 class alien_type_struct: public alien_type {
     private:
-        std::vector<std::pair<std::string, alien_type*>> members;
+        std::map<std::string,std::pair<size_t,alien_type*>> members;
         ffi_abi abi;
         ffi_type* pffi_type;
-        size_t* member_offs;
+
+        struct _member_info {
+            const alien_type* type;
+            size_t offset;
+
+            _member_info(const alien_type* type, size_t offset)
+                : type(type), offset(offset)
+            {}
+        };
 
     public:
         alien_type_struct(const std::string& type_name, 
@@ -24,8 +34,7 @@ class alien_type_struct: public alien_type {
         virtual alien_value* from_ptr(lua_State* L, void*) const override;
         virtual alien_value* new_value(lua_State* L) const override;
 
-        bool   has_member(const std::string& member);
-        size_t __offsetof(const std::string& member);
+        std::unique_ptr<_member_info> member_info(const std::string& member) const;
 
         virtual bool is_this_type(lua_State* L, int idx) const override;
         virtual alien_value* checkvalue(lua_State* L, int idx) const override;

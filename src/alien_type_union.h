@@ -5,11 +5,12 @@
 #include "alien_type_basic.h"
 #include <string>
 #include <vector>
+#include <map>
 
 
 class alien_type_union: public alien_type {
     private:
-        std::vector<std::pair<std::string, alien_type*>> members;
+        std::map<std::string, alien_type*> member_map;
         ffi_abi abi;
         ffi_type* pffi_type;
 
@@ -23,7 +24,7 @@ class alien_type_union: public alien_type {
         virtual alien_value* from_ptr(lua_State* L, void*) const override;
         virtual alien_value* new_value(lua_State* L) const override;
 
-        size_t sizeof_member(const std::string& member);
+        const alien_type* member_type(const std::string& member) const;
 
         virtual bool is_this_type(lua_State* L, int idx) const override;
         virtual alien_value* checkvalue(lua_State* L, int idx) const override;

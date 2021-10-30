@@ -1,5 +1,10 @@
 #include "alien_type.h"
 #include "alien_type_basic.h"
+#include "alien_type_buffer.h"
+#include "alien_type_callback.h"
+#include "alien_type_pointer.h"
+#include "alien_type_ref.h"
+#include "alien_type_string.h"
 #include "alien_type_struct.h"
 #include "alien_type_union.h"
 #include "alien_value.h"
@@ -72,6 +77,8 @@ bool alien_type::is_integer() const { return false; }
 bool alien_type::is_signed() const  { return false; }
 bool alien_type::is_float() const   { return false; }
 bool alien_type::is_double() const  { return false; }
+bool alien_type::is_rawpointer() const  { return false; }
+bool alien_type::is_void() const  { return false; }
 bool alien_type::is_basic() const   { return false; }
 bool alien_type::is_ref() const     { return false; }
 bool alien_type::is_pointer() const { return false; }
@@ -80,6 +87,26 @@ bool alien_type::is_struct() const  { return false; }
 bool alien_type::is_buffer() const  { return false; }
 bool alien_type::is_union() const   { return false; }
 bool alien_type::is_callback() const{ return false; }
+
+alien_value* alien_type::from_ptr(lua_State* L,
+                                  std::shared_ptr<char> m,
+                                  void* ptr) const 
+{
+    auto ans = this->from_ptr(L, ptr);
+    ans->_mem = m;
+    return ans;
+}
+
+static bool alien_istype(lua_State* L, int idx)
+{
+    return luaL_testudata(L, idx, ALIEN_TYPE_META) != nullptr;
+}
+
+alien_type* alien_checktype(lua_State* L, int idx)
+{
+    auto t = static_cast<alien_type**>(luaL_checkudata(L, idx, ALIEN_TYPE_META));
+    return *t;
+}
 
 static int alien_push_type_table(lua_State* L) {
     alien_push_alien(L);
@@ -90,37 +117,33 @@ static int alien_push_type_table(lua_State* L) {
 }
 
 static int alien_types_new(lua_State* L) {
-    alien_type** pptype = static_cast<alien_type**>(luaL_checkudata(L, 1, ALIEN_TYPE_META));
-    alien_type* ptype = *pptype;
+    alien_type* type = alien_checktype(L, 1);
 
-    return alien_operator_method_new(L, ptype);
+    return alien_operator_method_new(L, type);
 }
 static int alien_types_sizeof(lua_State* L) {
-    alien_type** pptype = static_cast<alien_type**>(luaL_checkudata(L, 1, ALIEN_TYPE_META));
-    alien_type* ptype = *pptype;
-    lua_pushnumber(L, ptype->__sizeof());
+    alien_type* type = alien_checktype(L, 1);
+    lua_pushnumber(L, type->__sizeof());
     return 1;
 }
 static int alien_types_gc(lua_State* L) {
-    alien_type** pptype = static_cast<alien_type**>(luaL_checkudata(L, 1, ALIEN_TYPE_META));
-    alien_type* ptype = *pptype;
-    delete ptype;
+    alien_type* type = alien_checktype(L, 1);
+    delete type;
     return 0;
 }
 static int alien_types_tostring(lua_State* L) {
-    alien_type** pptype = static_cast<alien_type**>(luaL_checkudata(L, 1, ALIEN_TYPE_META));
-    alien_type* ptype = *pptype;
+    alien_type* type = alien_checktype(L, 1);
 
-    if (ptype->is_struct())
-        lua_pushfstring(L, "[struct %s]", ptype->__typename().c_str());
-    else if (ptype->is_union())
-        lua_pushfstring(L, "[union %s]", ptype->__typename().c_str());
-    else if (ptype->is_pointer())
-        lua_pushfstring(L, "[pointer to %s]", ptype->__typename().c_str());
-    else if (ptype->is_ref())
-        lua_pushfstring(L, "[reference to %s]", ptype->__typename().c_str());
+    if (type->is_struct())
+        lua_pushfstring(L, "[struct %s]", type->__typename().c_str());
+    else if (type->is_union())
+        lua_pushfstring(L, "[union %s]", type->__typename().c_str());
+    else if (type->is_pointer())
+        lua_pushfstring(L, "[pointer to %s]", type->__typename().c_str());
+    else if (type->is_ref())
+        lua_pushfstring(L, "[reference to %s]", type->__typename().c_str());
     else
-        lua_pushfstring(L, "[%s]", ptype->__typename().c_str());
+        lua_pushfstring(L, "[%s]", type->__typename().c_str());
     return 1;
 }
 
@@ -224,9 +247,8 @@ int alien_types_defstruct(lua_State* L) {
         lua_rawgeti(L, -2, 2);
 
         const char* mname = luaL_checkstring(L, -2);
-        alien_type** pptype = static_cast<alien_type**>(luaL_checkudata(L, -1, ALIEN_TYPE_META));
-        alien_type* ptype = *pptype;
-        members.push_back(make_pair(mname, ptype));
+        alien_type* type = alien_checktype(L, 1);
+        members.push_back(make_pair(mname, type));
 
         lua_pop(L, 3);
     }
@@ -279,9 +301,8 @@ int alien_types_defunion(lua_State* L) {
         lua_rawgeti(L, -2, 2);
 
         const char* mname = luaL_checkstring(L, -2);
-        alien_type** pptype = static_cast<alien_type**>(luaL_checkudata(L, -1, ALIEN_TYPE_META));
-        alien_type* ptype = *pptype;
-        members.push_back(make_pair(mname, ptype));
+        alien_type* type = alien_checktype(L, 1);
+        members.push_back(make_pair(mname, type));
 
         lua_pop(L, 3);
     }
@@ -298,10 +319,51 @@ int alien_types_defunion(lua_State* L) {
     return 1;
 }
 
+/** defref */
+int alien_types_defref(lua_State* L) {
+    if (lua_gettop(L) != 2 || !lua_isstring(L, 1) || !alien_istype(L, 2))
+        return luaL_error(L, "alien: bad argument with 'defref( refname, type )'");
+
+    const char* refname = luaL_checkstring(L, 1);
+    alien_type* type = alien_checktype(L, 2);
+
+    alien_type_ref* new_type = new alien_type_ref(type);
+    alien_type** ud = static_cast<alien_type**>(lua_newuserdata(L, sizeof(alien_type*)));
+    luaL_setmetatable(L, ALIEN_TYPE_META);
+    *ud = new_type;
+
+    alien_push_type_table(L);
+    lua_pushvalue(L, 1);
+    lua_pushvalue(L, -3);
+    lua_settable(L, -3);
+    return 1;
+}
+
+/** defpointer */
+int alien_types_defpointer(lua_State* L) {
+    if (lua_gettop(L) != 2 || !lua_isstring(L, 1) || !alien_istype(L, 2))
+        return luaL_error(L, "alien: bad argument with 'defpointer( pointername, type )'");
+
+    const char* pointername = luaL_checkstring(L, 1);
+    alien_type* type = alien_checktype(L, 2);
+
+    alien_type_pointer* new_type = new alien_type_pointer(type);
+    alien_type** ud = static_cast<alien_type**>(lua_newuserdata(L, sizeof(alien_type*)));
+    luaL_setmetatable(L, ALIEN_TYPE_META);
+    *ud = new_type;
+
+    alien_push_type_table(L);
+    lua_pushvalue(L, 1);
+    lua_pushvalue(L, -3);
+    lua_settable(L, -3);
+    return 1;
+}
+
 /** alias(newtypename, type) */
 int alien_types_alias(lua_State* L) {
     const char* nname = luaL_checkstring(L, 1);
-    luaL_checkudata(L, 2, ALIEN_TYPE_META);
+    if (!alien_istype(L, 2))
+        return luaL_error(L, "alien: bad argument with 'alias(newtypename, type)'");
 
     alien_push_type_table(L);
     lua_pushvalue(L, 1);

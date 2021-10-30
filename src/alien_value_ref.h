@@ -39,4 +39,7 @@ class alien_value_ref: public alien_value {
         static alien_value_ref* checkvalue(const alien_type* type, lua_State* L, int idx);
 };
 
+
+int alien_value_ref_init(lua_State* L);
+
 #endif // _ALIEN_VALUE_REF_H_

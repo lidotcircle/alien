@@ -7,10 +7,12 @@
 
 class alien_value_struct: public alien_value {
     public:
-        alien_value_struct(const alien_type* type, const alien_type* ref_type);
-        alien_value_struct(const alien_type* type, const alien_type* ref_type, void* ptr);
+        alien_value_struct(const alien_type* type);
+        alien_value_struct(const alien_type* type, void* ptr);
+        alien_value_struct(const alien_type* type, std::shared_ptr<char> _mem, void* ptr);
 
-        alien_value* get_member(const std::string& member);
+        alien_value*       get_member(const std::string& member);
+        const alien_value* get_member(const std::string& member) const;
 
         virtual void to_lua(lua_State* L) const override;
         virtual alien_value* copy() const override;
@@ -22,5 +24,8 @@ class alien_value_struct: public alien_value {
         static bool is_this_value(const alien_type* type, lua_State* L, int idx);
         static alien_value_struct* checkvalue(const alien_type* type, lua_State* L, int idx);
 };
+
+
+int alien_value_struct_init(lua_State* L);
 
 #endif // _ALIEN_VALUE_STRUCT_H_
