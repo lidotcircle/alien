@@ -133,6 +133,10 @@ alien_value_callback::alien_value_callback(const alien_value_callback& other):
     *static_cast<void**>(this->ptr()) = this->pcallback_info->ffi_codeloc;
 }
 
+void* alien_value_callback::funcaddr() const {
+    return this->pcallback_info->ffi_codeloc;
+}
+
 void alien_value_callback::assignFrom(const alien_value& val) {
     throw std::runtime_error("alien: can't change callback");
 }

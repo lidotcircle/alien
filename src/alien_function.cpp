@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include "alien_function.h"
+#include "alien_value_callback.h"
 #include "alien_value.h"
 using namespace std;
 
@@ -24,10 +25,33 @@ const ffi_abi ffi_abis[] = { FFI_SYSV, FFI_THISCALL, FFI_FASTCALL, FFI_STDCALL, 
 const char *const ffi_abi_names[] = { "sysv", "thiscall", "fastcall", "stdcall", "pascal", "register", "cdecl", "default", NULL };
 #endif
 
+ffi_abi alien_checkabi(lua_State* L, int idx) {
+    if (!lua_isstring(L, idx)) {
+        luaL_error(L, "alien: abi should be specified as string");
+        return FFI_DEFAULT_ABI;
+    }
+
+    string na(lua_tostring(L, idx));
+    bool found = false;
+    for (size_t i=0;ffi_abi_names[i];i++) {
+        if (na == string(ffi_abi_names[i])) {
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        luaL_error(L, "alien: unsupport abi '%s' in current platform", na.c_str());
+        return FFI_DEFAULT_ABI;
+    }
+
+    ffi_abi abi = ffi_abis[luaL_checkoption(L, idx, "default", ffi_abi_names)];
+    return abi;
+}
+
 #define ALIEN_FUNCTION_META "alien_function_meta"
 
-static alien_Function **alien_checkfunction(lua_State *L, int index) {
-    return (alien_Function **)luaL_checkudata(L, index, ALIEN_FUNCTION_META);
+static alien_Function *alien_checkfunction(lua_State *L, int index) {
+    return *static_cast<alien_Function **>(luaL_checkudata(L, index, ALIEN_FUNCTION_META));
 }
 static bool alien_isfunction(lua_State *L, int index) {
     return luaL_testudata(L, index, ALIEN_FUNCTION_META) != nullptr;
@@ -72,8 +96,8 @@ static map<string, lua_CFunction> function_methods = {
     { "unhook", alien_function_unhook },
 };
 static map<string, lua_CFunction> function_properties = {
-    { "addr",       alien_function_types },
-    { "trampoline", alien_function_types },
+    { "addr",       alien_function_addr },
+    { "trampoline", alien_function_trampoline },
 };
 static int alien_function__index(lua_State* L) {
     const string method = luaL_checkstring(L, 2);
@@ -95,31 +119,24 @@ static int alien_function__index(lua_State* L) {
 }
 
 static int alien_function_call(lua_State* L) {
-    alien_Function** paf = alien_checkfunction(L, 1);
-    alien_Function* af = *paf;
-
+    alien_Function* af = alien_checkfunction(L, 1);
     return af->call_from_lua(L);
 }
 
 static int alien_function_tostring(lua_State* L) {
-    alien_Function** paf = alien_checkfunction(L, 1);
-    alien_Function* af = *paf;
-
+    alien_Function* af = alien_checkfunction(L, 1);
     lua_pushstring(L, af->tostring().c_str());
     return 1;
 }
 
 static int alien_function_gc(lua_State* L) {
-    alien_Function** paf = alien_checkfunction(L, 1);
-    alien_Function* af = *paf;
-    *paf = nullptr;
+    alien_Function* af = alien_checkfunction(L, 1);
     delete af;
     return 1;
 }
 
 static int alien_function_types(lua_State* L) {
-    alien_Function **paf = alien_checkfunction(L, 1);
-    alien_Function *af = *paf;
+    alien_Function *af = alien_checkfunction(L, 1);
 
     ffi_abi abi = FFI_DEFAULT_ABI;
     alien_type* ret = nullptr;
@@ -133,8 +150,8 @@ static int alien_function_types(lua_State* L) {
 }
 
 static int alien_function_hook(lua_State* L) {
-    alien_Function **paf = alien_checkfunction(L, 1);
-    alien_Function *af = *paf;
+    alien_Function *af = alien_checkfunction(L, 1);
+    alien_type* cbtype = alien_type_byname(L, "callback");
 
     if (!lua_isinteger(L, 2)) {
         void* fn = reinterpret_cast<void*>(lua_tointeger(L, 2));
@@ -143,19 +160,15 @@ static int alien_function_hook(lua_State* L) {
         void* fn = lua_touserdata(L, 2);
         af->hook(L, fn, LUA_NOREF);
     } else if (alien_isfunction(L, 2)) {
-        alien_Function **pafx = alien_checkfunction(L, 2);
-        alien_Function *afx = *pafx;
+        alien_Function *afx = alien_checkfunction(L, 2);
         lua_pushvalue(L, 2);
         int ref = luaL_ref(L, LUA_REGISTRYINDEX);
         af->hook(L, afx->funcaddr(), ref);
-    /* TODO
-    } else if (alien_iscallback(L, 2)) {
-        alien_type_callback **pcb = alien_checkcallback(L, 2);
-        alien_type_callback *cb = *pcb;
+    } else if (alien_value_callback::is_this_value(cbtype, L, 2)) {
+        alien_value_callback *cb = alien_value_callback::checkvalue(cbtype, L, 2);
         lua_pushvalue(L, 2);
         int ref = luaL_ref(L, LUA_REGISTRYINDEX);
         af->hook(L, cb->funcaddr(), ref);
-    */
     } else {
         return luaL_error(L, "alien: unexpected hook parameter");
     }
@@ -164,25 +177,19 @@ static int alien_function_hook(lua_State* L) {
 }
 
 static int alien_function_unhook(lua_State* L) {
-    alien_Function **paf = alien_checkfunction(L, 1);
-    alien_Function *af = *paf;
-
+    alien_Function *af = alien_checkfunction(L, 1);
     af->unhook(L);
     return 1;
 }
 
 static int alien_function_addr(lua_State* L) {
-    alien_Function **paf = alien_checkfunction(L, 1);
-    alien_Function *af = *paf;
-
+    alien_Function *af = alien_checkfunction(L, 1);
     lua_pushnumber(L, reinterpret_cast<ptrdiff_t>(af->funcaddr()));
     return 1;
 }
 
-static int alien_function_trampline(lua_State* L) {
-    alien_Function **paf = alien_checkfunction(L, 1);
-    alien_Function *af = *paf;
-
+static int alien_function_trampoline(lua_State* L) {
+    alien_Function *af = alien_checkfunction(L, 1);
     return af->trampoline(L);
 }
 
@@ -206,10 +213,12 @@ std::tuple<ffi_abi,alien_type*,std::vector<alien_type*>>
         return std::make_tuple(FFI_DEFAULT_ABI, ret, params);
     }
 
-    lua_getfield(L, 2, "abi");
-    ffi_abi abi = ffi_abis[luaL_checkoption(L, -1, "default", ffi_abi_names)];
+    ffi_abi abi = FFI_DEFAULT_ABI;
+    lua_getfield(L, idx, "abi");
+    if (!lua_isnil(L, -1))
+        abi = alien_checkabi(L, -1);
 
-    lua_getfield(L, 2, "ret");
+    lua_getfield(L, idx, "ret");
     if (lua_isnil(L, -1)) {
         luaL_error(L, "alien: return type should be specified");
         return std::make_tuple(FFI_DEFAULT_ABI, ret, params);
@@ -217,9 +226,9 @@ std::tuple<ffi_abi,alien_type*,std::vector<alien_type*>>
     ret = alien_checktype(L, -1);
     lua_pop(L, 2);
 
-    size_t nparams = luaL_len(L, 2);
+    size_t nparams = luaL_len(L, idx);
     for(size_t i=1;i<=nparams;i++) {
-        lua_rawgeti(L, 2, i);
+        lua_rawgeti(L, idx, i);
 
         alien_type* para_type = alien_checktype(L, -1);
         params.push_back(para_type);
@@ -250,10 +259,9 @@ int alien_function_new(lua_State *L) {
 
 alien_Function::alien_Function(alien_Library* lib, void* fn, const string& name):
     lib(lib), name(name), L(lib->get_lua_State()), fn(fn) , ret_type(nullptr),
-    params(), ffi_params(nullptr), hookhandle(nullptr)
+    params(), ffi_params(nullptr), hookhandle(nullptr), keepalive_ref(LUA_NOREF)
 {
-    // TODO
-    alien_type* void_t = nullptr;
+    alien_type* void_t = alien_type_byname(L, "void");
     this->define_types(FFI_DEFAULT_ABI, void_t, vector<alien_type*>());
 }
 

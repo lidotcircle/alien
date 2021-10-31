@@ -130,7 +130,7 @@ lua_State* alien_Library::get_lua_State() {
 }
 
 void* alien_Library::loadfunc(const std::string& func) {
-    return alien_loadfunc(this->L, this->lib, this->name.c_str());
+    return alien_loadfunc(this->L, this->lib, func.c_str());
 }
 
 std::string alien_Library::tostring() {
@@ -157,8 +157,8 @@ alien_Library::~alien_Library() {
 #define ALIEN_LIBRARY_DEFAULT_LIB_GN "__alien_library_default_gn"
 #define ALIEN_LIBRARY_MISC_LIB       "__alien_library_misc_lib"
 
-static alien_Library** alien_checklibrary(lua_State*L, int idx) {
-    return (alien_Library **)luaL_checkudata(L, idx, ALIEN_LIBRARY_META);
+static alien_Library* alien_checklibrary(lua_State*L, int idx) {
+    return *static_cast<alien_Library **>(luaL_checkudata(L, idx, ALIEN_LIBRARY_META));
 }
 
 static int alien_library_get(lua_State *L);
@@ -200,8 +200,7 @@ alien_Library* alien_library__get_default_library(lua_State *L) {
     alien_push_alien(L);
     lua_pushliteral(L, ALIEN_LIBRARY_DEFAULT_LIB_GN);
     lua_gettable(L, -2);
-    alien_Library** pal = alien_checklibrary(L, -1);
-    return *pal;
+    return alien_checklibrary(L, -1);
 }
 
 alien_Library* alien_library__get_misc(lua_State *L) {
@@ -228,27 +227,25 @@ int alien_load(lua_State *L) {
 }
 
 int alien_library_gc(lua_State *L) {
-    alien_Library **pal = alien_checklibrary(L, 1);
-    alien_Library *al = *pal;
-    *pal = nullptr;
+    alien_Library *al = alien_checklibrary(L, 1);
     delete al;
     return 0;
 }
 
 int alien_library_get(lua_State *L) {
-    alien_Library **pal = alien_checklibrary(L, 1);
-    alien_Library *al = *pal;
+    alien_Library *al = alien_checklibrary(L, 1);
     const char *funcname = luaL_checkstring(L, 2);
 
     lua_getuservalue(L, 1);
-    int cache = lua_gettop(L);
-    lua_getfield(L, cache, funcname);
+    lua_getfield(L, -1, funcname);
     if(!lua_isnil(L, -1)) return 1;
     lua_pop(L, 1);
 
     void* fn = al->loadfunc(funcname);
+    if (fn == nullptr)
+        return lua_error(L);
+
     int n = alien_function__make_function(L, al, fn, funcname);
-    assert( n == 1);
 
     lua_pushstring(L, funcname);
     lua_pushvalue(L, -2);
@@ -257,8 +254,7 @@ int alien_library_get(lua_State *L) {
 }
 
 int alien_library_tostring(lua_State *L) {
-    alien_Library **pal = alien_checklibrary(L, 1);
-    alien_Library *al = *pal;
+    alien_Library *al = alien_checklibrary(L, 1);
     lua_pushfstring(L, "alien library %s", al->libname().c_str());
     return 1;
 }
@@ -269,8 +265,7 @@ int alien_functionlist(lua_State* L) {
         return luaL_error(L, "alien: too %s arguments[ functionlist(alien_library) ]", 
                           n > 1 ? "many" : "few");
 
-    alien_Library** pal = alien_checklibrary(L, 1);
-    alien_Library* al = *pal;
+    alien_Library* al = alien_checklibrary(L, 1);
 
     lua_newtable(L);
     int i = 1;
@@ -290,8 +285,7 @@ int alien_hasfunction(lua_State* L) {
         return luaL_error(L, "alien: too %s arguments (function hasfunction)",
                           nargs < 2 ? "few" : "many");
 
-    alien_Library** pal = alien_checklibrary(L, 1);
-    alien_Library* al = *pal;
+    alien_Library* al = alien_checklibrary(L, 1);
     const char* funcname = luaL_checkstring(L, 2);
 
     bool ans = al->has_function(funcname);

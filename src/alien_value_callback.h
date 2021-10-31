@@ -31,6 +31,8 @@ class alien_value_callback: public alien_value {
                              ffi_abi abi, alien_type* ret, const std::vector<alien_type*>& params);
         alien_value_callback(const alien_value_callback& other);
 
+        void* funcaddr() const;
+
         virtual void assignFrom(const alien_value& val) override;
         virtual void assignFromLua(lua_State* L, size_t idx) override;
 

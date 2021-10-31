@@ -54,11 +54,9 @@ class alien_Function {
 int alien_function_init(lua_State *L);
 
 int alien_function__make_function(lua_State *L, alien_Library* lib, void *fn, const std::string& name);
+ffi_abi alien_checkabi(lua_State* L, int idx);
 std::tuple<ffi_abi,alien_type*,std::vector<alien_type*>> alien_function__parse_types_table(lua_State *L, int idx);
 
 int alien_function_new(lua_State *L);
-
-extern const ffi_abi ffi_abis[];
-extern const char *const ffi_abi_names[];
 
 #endif // _ALIEN_FUNCTION_H_

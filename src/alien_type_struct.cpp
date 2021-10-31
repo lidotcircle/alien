@@ -17,7 +17,7 @@ alien_type_struct::alien_type_struct(const std::string& t,
     this->pffi_type->elements = new ffi_type*[members.size() + 1];
     this->pffi_type->size = 0;
     this->pffi_type->alignment = 0;
-    std::shared_ptr<size_t> memoffs(new size_t[this->members.size() + 1], std::default_delete<size_t[]>());
+    std::shared_ptr<size_t> memoffs(new size_t[members.size() + 1], std::default_delete<size_t[]>());
 
     for(size_t i=0;i<members.size();i++) {
         auto& memtype = members[i];

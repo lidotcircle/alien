@@ -34,6 +34,7 @@ class alien_value_buffer: public alien_value {
 #undef MENTRY
 
         virtual void assignFrom(const alien_value& val) override;
+        size_t buflen() const;
 
         virtual void to_lua(lua_State* L) const override;
         virtual alien_value* copy() const override;

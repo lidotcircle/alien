@@ -1,5 +1,6 @@
 #include "alien_value_string.h"
 #include <string.h>
+#include <assert.h>
 #include <memory>
 
 
@@ -16,7 +17,7 @@ alien_value_string::alien_value_string(const alien_type* type, const char* ptr):
     this->str = std::shared_ptr<char>(new char[this->_strlen + 1], std::default_delete<char[]>());
     *static_cast<void**>(this->ptr()) = this->str.get();
 
-    memcpy(this->ptr(), ptr, this->_strlen + 1);
+    memcpy(*static_cast<void**>(this->ptr()), ptr, this->_strlen + 1);
 }
 
 alien_value_string::alien_value_string(const alien_value_string& other):
@@ -26,7 +27,7 @@ alien_value_string::alien_value_string(const alien_value_string& other):
 }
 
 void alien_value_string::to_lua(lua_State* L) const {
-    lua_pushstring(L, static_cast<const char*>(this->ptr()));
+    lua_pushstring(L, *static_cast<char*const*>(this->ptr()));
 }
 
 alien_value* alien_value_string::copy() const {
@@ -36,6 +37,7 @@ alien_value* alien_value_string::copy() const {
 /** static */
 alien_value* alien_value_string::from_lua(const alien_type* type, lua_State* L, int idx) {
     const char* str = lua_tostring(L, idx);
+    assert(str != nullptr);
     return new alien_value_string(type, str);
 }
 alien_value* alien_value_string::from_ptr(const alien_type* type, lua_State* L, void* ptr) {
@@ -63,8 +65,15 @@ int alien_value_string_init(lua_State* L) {
 
 int alien_value_string_new(lua_State* L) {
     alien_type* stringtype = alien_checktype(L, 1);
-    std::unique_ptr<alien_value> val(stringtype->from_lua(L, 1));
-    val->to_lua(L);
+    if (lua_gettop(L) > 1) {
+        luaL_argcheck(L, lua_isstring(L, 2), 2, "alien: require string");
+
+        std::unique_ptr<alien_value> val(stringtype->from_lua(L, 2));
+        val->to_lua(L);
+    } else {
+        std::unique_ptr<alien_value> val(stringtype->new_value(L));
+        val->to_lua(L);
+    }
 
     return 1;
 }

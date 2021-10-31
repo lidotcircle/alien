@@ -22,11 +22,18 @@ alien_value_buffer::alien_value_buffer(const alien_value_buffer& other):
     *static_cast<void**>(this->ptr()) = this->buf.get();
 }
 
+size_t alien_value_buffer::buflen() const {
+    return this->buf_len;
+}
+
 static bool in_range(size_t len, size_t s, size_t idx, size_t off) {
     return (s * (idx + 1) + off <= len);
 }
 
 #define MENTRY(n, t) t alien_value_buffer::get_##n(lua_State* L, size_t nn, size_t off) const { \
+    if (nn == 0) \
+        return luaL_error(L, "alien: access buffer out of range (type = %s), start from 1", #t); \
+    nn--; \
     if (!in_range(this->buf_len, sizeof(t), nn, off)) \
         return luaL_error(L, "alien: access buffer out of range (type = %s)", #t); \
     const void* ptr = *static_cast<char* const*>(this->ptr()) + off;\
@@ -36,6 +43,11 @@ buffer_access_type
 #undef MENTRY
 
 #define MENTRY(n, t) void alien_value_buffer::set_##n(lua_State* L, size_t nn, size_t off, t val) { \
+    if (nn == 0) { \
+        luaL_error(L, "alien: access buffer out of range (type = %s), start from 1", #t); \
+        return; \
+    } \
+    nn--; \
     if (!in_range(this->buf_len, sizeof(t), nn, off)) {\
         luaL_error(L, "alien: access buffer out of range (type = %s)", #t); \
         return; \
@@ -84,6 +96,8 @@ static alien_value_buffer* alien_checkbuffer(lua_State* L, int idx) {
 
 
 static int alien_buffer_gc(lua_State* L);
+static int alien_buffer_tostring(lua_State* L);
+static int alien_buffer_len(lua_State* L);
 #define MENTRY(n, t) static int alien_buffer_get_##n(lua_State* L); \
                      static int alien_buffer_set_##n(lua_State* L);
 buffer_access_type
@@ -94,6 +108,14 @@ int alien_value_buffer_init(lua_State* L) {
 
     lua_pushliteral(L, "__gc");
     lua_pushcfunction(L, alien_buffer_gc);
+    lua_settable(L, -3);
+
+    lua_pushliteral(L, "__tostring");
+    lua_pushcfunction(L, alien_buffer_tostring);
+    lua_settable(L, -3);
+
+    lua_pushliteral(L, "__len");
+    lua_pushcfunction(L, alien_buffer_len);
     lua_settable(L, -3);
 
     lua_pushliteral(L, "__index");
@@ -147,6 +169,16 @@ static int alien_buffer_gc(lua_State* L) {
     alien_value_buffer* vb = alien_checkbuffer(L, 1);
     delete vb;
     return 0;
+}
+static int alien_buffer_tostring(lua_State* L) {
+    alien_value_buffer* vb = alien_checkbuffer(L, 1);
+    lua_pushfstring(L, "[alien buffer #%d", vb->buflen());
+    return 1;
+}
+static int alien_buffer_len(lua_State* L) {
+    alien_value_buffer* vb = alien_checkbuffer(L, 1);
+    lua_pushnumber(L, vb->buflen());
+    return 1;
 }
 #define MENTRY(n, t) \
     static int alien_buffer_get_##n(lua_State* L) { \

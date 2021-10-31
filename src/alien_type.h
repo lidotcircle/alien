@@ -64,6 +64,7 @@ int alien_types_defunion(lua_State* L);
 int alien_types_defref(lua_State* L);
 int alien_types_defpointer(lua_State* L);
 int alien_types_alias(lua_State* L);
+int alien_types_getbyname(lua_State* L);
 
 alien_type* alien_checktype(lua_State* L, int idx);
 alien_type* alien_type_byname(lua_State* L, const char* tname);

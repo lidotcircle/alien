@@ -8,6 +8,7 @@
 #include "alien_type_struct.h"
 #include "alien_type_union.h"
 #include "alien_value.h"
+#include "alien_function.h"
 #include <assert.h>
 #include <vector>
 #include <string>
@@ -228,6 +229,16 @@ int alien_types_init(lua_State* L) {
     basic_type_map
 #undef MENTRY
 
+#define MENTRY(_s, _t) \
+        lua_pushcfunction(L, alien_types_alias); \
+        lua_pushstring(L, #_s); \
+        lua_pushcfunction(L, alien_types_getbyname); \
+        lua_pushstring(L, #_t); \
+        lua_call(L, 1, 1); \
+        lua_call(L, 2, 0);
+    type_alias_map
+#undef MENTRY
+
     alien_type* buftype = new alien_type_buffer();
     alien_type* strtype = new alien_type_string();
     alien_type* cbtype  = new alien_type_callback();
@@ -272,15 +283,10 @@ int alien_types_defstruct(lua_State* L) {
     lua_pop(L, 1);
 
     ffi_abi abi = FFI_DEFAULT_ABI;
-    lua_pushliteral(L, "abi");
-    lua_gettable(L, 2);
-    if (!lua_isnil(L, -1)) {
-        if (!lua_isnumber(L, -1))
-            return luaL_error(L, "alien: bad abi");
-
-        abi = static_cast<ffi_abi>(luaL_checkinteger(L, -1));
-    }
-    lua_pop(L, -1);
+    lua_getfield(L, 2, "abi");
+    if (!lua_isnil(L, -1))
+        abi = alien_checkabi(L, -1);
+    lua_pop(L, 1);
 
     vector<pair<string,alien_type*>> members;
     size_t nmember = luaL_len(L, 2);
@@ -294,7 +300,7 @@ int alien_types_defstruct(lua_State* L) {
         lua_rawgeti(L, -2, 2);
 
         const char* mname = luaL_checkstring(L, -2);
-        alien_type* type = alien_checktype(L, 1);
+        alien_type* type = alien_checktype(L, -1);
         members.push_back(make_pair(mname, type));
 
         lua_pop(L, 3);
@@ -326,15 +332,10 @@ int alien_types_defunion(lua_State* L) {
     lua_pop(L, 1);
 
     ffi_abi abi = FFI_DEFAULT_ABI;
-    lua_pushliteral(L, "abi");
-    lua_gettable(L, 2);
-    if (!lua_isnil(L, -1)) {
-        if (!lua_isnumber(L, -1))
-            return luaL_error(L, "alien: bad abi");
-
-        abi = static_cast<ffi_abi>(luaL_checkinteger(L, -1));
-    }
-    lua_pop(L, -1);
+    lua_getfield(L, 2, "abi");
+    if (!lua_isnil(L, -1))
+        abi = alien_checkabi(L, -1);
+    lua_pop(L, 1);
 
     vector<pair<string,alien_type*>> members;
     size_t nmember = luaL_len(L, 2);
@@ -348,7 +349,7 @@ int alien_types_defunion(lua_State* L) {
         lua_rawgeti(L, -2, 2);
 
         const char* mname = luaL_checkstring(L, -2);
-        alien_type* type = alien_checktype(L, 1);
+        alien_type* type = alien_checktype(L, -1);
         members.push_back(make_pair(mname, type));
 
         lua_pop(L, 3);
@@ -424,5 +425,18 @@ int alien_types_alias(lua_State* L) {
     lua_pushvalue(L, 2);
     lua_settable(L, -3);
     return 0;
+}
+
+/** atype(typename) */
+int alien_types_getbyname(lua_State* L) {
+    const char* nname = luaL_checkstring(L, 1);
+    alien_push_type_table(L);
+    lua_pushvalue(L, 1);
+    lua_gettable(L, -2);
+
+    if (lua_isnil(L, -1))
+        return luaL_error(L, "alien: type %s doesn't exist", nname);
+
+    return 1;
 }
 

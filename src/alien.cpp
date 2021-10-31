@@ -22,6 +22,7 @@ static const luaL_Reg alienlib[] = {
     {"defref",       alien_types_defref},
     {"defpointer",   alien_types_defpointer},
     {"alias",        alien_types_alias},
+    {"atype",        alien_types_getbyname},
     {NULL, NULL},
 };
 
