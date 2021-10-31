@@ -44,9 +44,12 @@ assert(#b1 == 1000)
 
 -- function test1
 local get2times = testl.get2times
-get2times:types({abi = "default", ret = alien.types.int, alien.types.int})
+get2times:types({ret = alien.types.int, alien.types.int})
 local n2t = get2times(100)
 assert(n2t == 200)
+local printstr = testl.print_string
+printstr:types({ret = alien.types.void, alien.types.string})
+printstr("hello world")
 
 -- struct
 alien.defstruct("abc", {
@@ -58,6 +61,7 @@ alien.defstruct("uzv", {
     { "y", alien.types.char },
 })
 local f = alien.types.abc:new()
+assert(type(f) == "userdata")
 f.a = 100
 f.b = 200
 assert(f.a == 100)
@@ -68,4 +72,10 @@ assert(uzv1.x.a == 100)
 local ux1 = uzv1.x
 ux1.a = 500
 assert(uzv1.x.a == 500)
+
+local sumabc = testl.sumstruct1
+sumabc:types({ret = alien.types.int, alien.types.abc})
+local sabc = sumabc(f)
+assert(sabc == 300)
+assert(sabc == f.a + f.b)
 

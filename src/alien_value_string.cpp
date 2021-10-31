@@ -43,6 +43,9 @@ alien_value* alien_value_string::from_lua(const alien_type* type, lua_State* L, 
 alien_value* alien_value_string::from_ptr(const alien_type* type, lua_State* L, void* ptr) {
     return new alien_value_string(type, *static_cast<const char**>(ptr));
 }
+alien_value* alien_value_string::from_shr(const alien_type* type, lua_State* L, std::shared_ptr<char> mem, void* ptr) {
+    return new alien_value_string(type, *static_cast<const char**>(ptr));
+}
 alien_value* alien_value_string::new_value(const alien_type* type, lua_State* L) {
     return new alien_value_string(type);
 }

@@ -8,7 +8,6 @@
 class alien_value_union: public alien_value {
     public:
         alien_value_union(const alien_type* type);
-        alien_value_union(const alien_type* type, void* ptr);
         alien_value_union(const alien_type* type, std::shared_ptr<char> _mem, void* ptr);
 
         alien_value* get_member(const std::string& member);
@@ -19,6 +18,7 @@ class alien_value_union: public alien_value {
 
         static alien_value* from_lua(const alien_type* type, lua_State* L, int idx);
         static alien_value* from_ptr(const alien_type* type, lua_State* L, void* ptr);
+        static alien_value* from_shr(const alien_type* type, lua_State* L, std::shared_ptr<char> mem, void* ptr);
         static alien_value* new_value(const alien_type* type, lua_State* L);
 
         static bool is_this_value(const alien_type* type, lua_State* L, int idx);

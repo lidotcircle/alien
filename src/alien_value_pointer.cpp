@@ -110,10 +110,9 @@ alien_value_pointer::alien_value_pointer(const alien_type* type): alien_value(ty
     this->init_value();
 }
 
-alien_value_pointer::alien_value_pointer(const alien_type* type, void* ptr): alien_value(type), aval(nullptr)
+alien_value_pointer::alien_value_pointer(const alien_type* type, std::shared_ptr<char> mem, void* ptr):
+    alien_value(type, mem, ptr), aval(nullptr)
 {
-    assert(type->is_pointer());
-    *static_cast<void**>(this->ptr()) = ptr;
     const alien_type_pointer* uv = dynamic_cast<const alien_type_pointer*>(this->alientype());
     assert(uv != nullptr);
     this->ptr_type = const_cast<alien_type*>(uv->ptr_type());
@@ -136,7 +135,8 @@ void alien_value_pointer::to_lua(lua_State* L) const {
 
 alien_value* alien_value_pointer::copy() const {
     void* ptr = *static_cast<void* const*>(this->ptr());
-    alien_value_pointer* ans = new alien_value_pointer(this->alientype(), ptr);
+    alien_value_pointer* ans = new alien_value_pointer(this->alientype());
+    ans->change_ptr(ptr);
     return ans;
 }
 
@@ -179,6 +179,16 @@ bool alien_value_pointer::is_null() const {
     return *static_cast<void*const*>(this->ptr()) == nullptr;
 }
 
+void alien_value_pointer::change_ptr(void* ptr) {
+    *static_cast<void**>(this->ptr()) = ptr;
+    if (this->aval) {
+        delete this->aval;
+        this->aval = nullptr;
+    }
+
+    this->init_value();
+}
+
 alien_value_pointer::~alien_value_pointer() {
     if (aval != nullptr) {
         delete aval;
@@ -189,10 +199,12 @@ alien_value_pointer::~alien_value_pointer() {
 /** static */
 alien_value* alien_value_pointer::from_lua(const alien_type* type, lua_State* L, int idx) {
     if (lua_isnil(L, idx)) {
-        return new alien_value_pointer(type, nullptr);
+        return new alien_value_pointer(type);
     } else if (lua_islightuserdata(L, idx)) {
         void* ptr = lua_touserdata(L, idx);
-        return new alien_value_pointer(type, ptr);
+        auto ans = new alien_value_pointer(type);
+        ans->change_ptr(ptr);
+        return ans;
     } else if (alien_ispointer(L, idx)) {
         alien_value_pointer* ptr = alien_checkpointer(L, idx);
         return ptr->copy();
@@ -204,7 +216,15 @@ alien_value* alien_value_pointer::from_lua(const alien_type* type, lua_State* L,
 
 /** static */
 alien_value* alien_value_pointer::from_ptr(const alien_type* type, lua_State* L, void* ptr) {
-    return new alien_value_pointer(type, ptr);
+    void* val = *static_cast<void**>(ptr);
+    auto ans = new alien_value_pointer(type);
+    ans->change_ptr(val);
+    return ans;
+}
+
+/** static */
+alien_value* alien_value_pointer::from_shr(const alien_type* type, lua_State* L, std::shared_ptr<char> mem, void* ptr) {
+    return new alien_value_pointer(type, mem, ptr);;
 }
 
 /** static */

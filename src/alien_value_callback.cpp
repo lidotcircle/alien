@@ -192,6 +192,9 @@ alien_value* alien_value_callback::from_lua(const alien_type* type, lua_State* L
 alien_value* alien_value_callback::from_ptr(const alien_type* type, lua_State* L, void* ptr) {
     throw std::runtime_error("alien: can't create callback from ptr");
 }
+alien_value* alien_value_callback::from_shr(const alien_type* type, lua_State* L, std::shared_ptr<char> mem, void* ptr) {
+    throw std::runtime_error("alien: can't create callback");
+}
 alien_value* alien_value_callback::new_value(const alien_type* type, lua_State* L) {
     throw std::runtime_error("alien: can't create callback");
 }

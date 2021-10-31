@@ -14,8 +14,23 @@
 #define EXPORT(x) x
 #endif
 
+struct struct1 {
+    int a;
+    int b;
+};
+
+EXPORT(int) sumstruct1(struct struct1 s) {
+    int ans = s.a + s.b;
+    s.a = 300;
+    return ans;
+}
+
 EXPORT(int) get2times(int n) {
 	return 2 * n;
+}
+
+EXPORT(void) print_string(char *s) {
+    printf("%s\n", s);
 }
 
 /* some functions handy for testing */

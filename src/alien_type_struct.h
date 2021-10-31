@@ -32,6 +32,9 @@ class alien_type_struct: public alien_type {
         virtual ffi_type* ffitype() override;
         virtual alien_value* from_lua(lua_State* L, int idx) const override;
         virtual alien_value* from_ptr(lua_State* L, void*) const override;
+        virtual alien_value* from_shr(lua_State* L, 
+                                      std::shared_ptr<char> m,
+                                      void* ptr) const override;
         virtual alien_value* new_value(lua_State* L) const override;
 
         std::unique_ptr<_member_info> member_info(const std::string& member) const;

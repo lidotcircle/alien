@@ -6,7 +6,6 @@
 
 
 alien_value_basic::alien_value_basic(const alien_type* type): alien_value(type) {}
-alien_value_basic::alien_value_basic(const alien_type* type, void* ptr): alien_value(type, ptr) {}
 alien_value_basic::alien_value_basic(const alien_type* type, std::shared_ptr<char> mem, void* ptr): alien_value(type, mem, ptr) {}
 
 void alien_value_basic::to_lua(lua_State* L) const {
@@ -147,6 +146,15 @@ alien_value* alien_value_basic::from_ptr(const alien_type* type, lua_State* L, v
     }
 
     return ans;
+}
+
+/** static */
+alien_value* alien_value_basic::from_shr(const alien_type* type, lua_State* L, std::shared_ptr<char> mem, void* ptr) {
+    return new alien_value_basic(type, mem, ptr);
+}
+
+alien_value* alien_value_basic::new_value(const alien_type* type, lua_State* L) {
+    return new alien_value_basic(type);
 }
 
 /** static */

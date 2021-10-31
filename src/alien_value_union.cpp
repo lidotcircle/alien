@@ -21,7 +21,7 @@ static alien_value_union* alien_checkunion(lua_State* L, int idx)
 static int alien_value_union_gc(lua_State* L);
 static int alien_value_union_tostring(lua_State* L);
 static int alien_value_union_index(lua_State* L);
-static int alien_value_union_setindex(lua_State* L);
+static int alien_value_union_newindex(lua_State* L);
 
 int alien_value_union_init(lua_State* L)
 {
@@ -39,8 +39,8 @@ int alien_value_union_init(lua_State* L)
     lua_pushcfunction(L, alien_value_union_index);
     lua_settable(L, -3);
 
-    lua_pushliteral(L, "__setindex");
-    lua_pushcfunction(L, alien_value_union_setindex);
+    lua_pushliteral(L, "__newindex");
+    lua_pushcfunction(L, alien_value_union_newindex);
     lua_settable(L, -3);
 
     lua_pop(L, 1);
@@ -79,7 +79,7 @@ static int alien_value_union_index(lua_State* L)
     mem->to_lua(L);
     return 1;
 }
-static int alien_value_union_setindex(lua_State* L)
+static int alien_value_union_newindex(lua_State* L)
 {
     alien_value_union* s = alien_checkunion(L, 1);
     const char* key = luaL_checkstring(L, 2);
@@ -93,10 +93,6 @@ static int alien_value_union_setindex(lua_State* L)
 }
 
 alien_value_union::alien_value_union(const alien_type* type): alien_value(type)
-{
-}
-
-alien_value_union::alien_value_union(const alien_type* type, void* ptr): alien_value(type, ptr)
 {
 }
 
@@ -116,7 +112,7 @@ alien_value* alien_value_union::get_member(const string& m)
         return nullptr;
 
     // TODO
-    return mt->from_ptr(nullptr, this->_mem, this->ptr());
+    return mt->from_shr(nullptr, this->_mem, this->ptr());
 }
 
 const alien_value* alien_value_union::get_member(const string& m) const
@@ -154,7 +150,14 @@ alien_value* alien_value_union::from_lua(const alien_type* type, lua_State* L, i
 /* static */
 alien_value* alien_value_union::from_ptr(const alien_type* type, lua_State* L, void* ptr)
 {
-    return new alien_value_union(type, ptr);
+    auto ans = new alien_value_union(type);
+    memcpy(ans->ptr(), ptr, ans->__sizeof());
+    return ans;
+}
+
+/** static */
+alien_value* alien_value_union::from_shr(const alien_type* type, lua_State* L, std::shared_ptr<char> mem, void* ptr) {
+    return new alien_value_union(type, mem, ptr);
 }
 
 /* static */

@@ -45,6 +45,7 @@ class alien_value_callback: public alien_value {
 
         static alien_value* from_lua(const alien_type* type, lua_State* L, int idx);
         static alien_value* from_ptr(const alien_type* type, lua_State* L, void* ptr);
+        static alien_value* from_shr(const alien_type* type, lua_State* L, std::shared_ptr<char> mem, void* ptr);
         static alien_value* new_value(const alien_type* type, lua_State* L);
 
         static bool is_this_value(const alien_type* type, lua_State* L, int idx);

@@ -89,15 +89,6 @@ bool alien_type::is_buffer() const  { return false; }
 bool alien_type::is_union() const   { return false; }
 bool alien_type::is_callback() const{ return false; }
 
-alien_value* alien_type::from_ptr(lua_State* L,
-                                  std::shared_ptr<char> m,
-                                  void* ptr) const 
-{
-    auto ans = this->from_ptr(L, ptr);
-    ans->_mem = m;
-    return ans;
-}
-
 static bool alien_istype(lua_State* L, int idx)
 {
     return luaL_testudata(L, idx, ALIEN_TYPE_META) != nullptr;

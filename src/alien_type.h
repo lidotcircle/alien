@@ -29,9 +29,9 @@ class alien_type {
 
         virtual alien_value* from_lua(lua_State* L, int idx) const = 0;
         virtual alien_value* from_ptr(lua_State* L, void* ptr) const = 0;
-        virtual alien_value* from_ptr(lua_State* L, 
+        virtual alien_value* from_shr(lua_State* L, 
                                       std::shared_ptr<char> m,
-                                      void* ptr) const;
+                                      void* ptr) const = 0;
         virtual alien_value* new_value(lua_State* L) const = 0;
 
         virtual bool is_integer() const;

@@ -58,6 +58,10 @@ alien_value* alien_type_struct::from_ptr(lua_State* L, void* ptr) const {
     return alien_value_struct::from_ptr(this, L, ptr);
 }
 
+alien_value* alien_type_struct::from_shr(lua_State* L, std::shared_ptr<char> m, void* ptr) const {
+    return alien_value_struct::from_shr(this, L, m, ptr);
+}
+
 alien_value* alien_type_struct::new_value(lua_State* L) const {
     return alien_value_struct::new_value(this, L);
 }

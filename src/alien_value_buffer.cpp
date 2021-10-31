@@ -220,6 +220,11 @@ alien_value* alien_value_buffer::from_ptr(const alien_type* type, lua_State* L, 
 }
 
 /** static */
+alien_value* alien_value_buffer::from_shr(const alien_type* type, lua_State* L, std::shared_ptr<char> mem, void* ptr) {
+    return nullptr;
+}
+
+/** static */
 alien_value* alien_value_buffer::new_value(const alien_type* type, lua_State* L) {
     return nullptr;
 }

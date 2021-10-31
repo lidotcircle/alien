@@ -26,7 +26,6 @@ class alien_value {
     public:
         alien_value() = delete;
         alien_value(const alien_type* type);
-        alien_value(const alien_type* type, void* ptr);
         alien_value(const alien_type* type, std::shared_ptr<char> mem, void* ptr);
 
         /** pass pointer to ffi call */

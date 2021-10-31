@@ -21,7 +21,7 @@ static alien_value_struct* alien_checkstruct(lua_State* L, int idx)
 static int alien_value_struct_gc(lua_State* L);
 static int alien_value_struct_tostring(lua_State* L);
 static int alien_value_struct_index(lua_State* L);
-static int alien_value_struct_setindex(lua_State* L);
+static int alien_value_struct_newindex(lua_State* L);
 
 int alien_value_struct_init(lua_State* L)
 {
@@ -39,8 +39,8 @@ int alien_value_struct_init(lua_State* L)
     lua_pushcfunction(L, alien_value_struct_index);
     lua_settable(L, -3);
 
-    lua_pushliteral(L, "__setindex");
-    lua_pushcfunction(L, alien_value_struct_setindex);
+    lua_pushliteral(L, "__newindex");
+    lua_pushcfunction(L, alien_value_struct_newindex);
     lua_settable(L, -3);
 
     lua_pop(L, 1);
@@ -79,7 +79,7 @@ static int alien_value_struct_index(lua_State* L)
     mem->to_lua(L);
     return 1;
 }
-static int alien_value_struct_setindex(lua_State* L)
+static int alien_value_struct_newindex(lua_State* L)
 {
     alien_value_struct* s = alien_checkstruct(L, 1);
     const char* key = luaL_checkstring(L, 2);
@@ -93,10 +93,6 @@ static int alien_value_struct_setindex(lua_State* L)
 }
 
 alien_value_struct::alien_value_struct(const alien_type* type): alien_value(type)
-{
-}
-
-alien_value_struct::alien_value_struct(const alien_type* type, void* ptr): alien_value(type, ptr)
 {
 }
 
@@ -119,7 +115,7 @@ alien_value* alien_value_struct::get_member(const string& m)
     void* ptr = static_cast<char*>(this->ptr()) + minfo->offset;
 
     // TODO
-    return mt->from_ptr(nullptr, this->_mem, ptr);
+    return mt->from_shr(nullptr, this->_mem, ptr);
 }
 
 const alien_value* alien_value_struct::get_member(const string& m) const
@@ -133,7 +129,7 @@ void alien_value_struct::to_lua(lua_State* L) const
         new alien_value_struct(this->alientype(), this->_mem, const_cast<void*>(this->ptr()));
     alien_value_struct** p = static_cast<alien_value_struct**>(lua_newuserdata(L, sizeof(alien_value_struct*)));
     *p = obj;
-    luaL_getmetatable(L, ALIEN_VALUE_STRUCT_META);
+    luaL_setmetatable(L, ALIEN_VALUE_STRUCT_META);
 }
 
 alien_value* alien_value_struct::copy() const {
@@ -157,7 +153,14 @@ alien_value* alien_value_struct::from_lua(const alien_type* type, lua_State* L, 
 /* static */
 alien_value* alien_value_struct::from_ptr(const alien_type* type, lua_State* L, void* ptr)
 {
-    return new alien_value_struct(type, ptr);
+    auto ans = new alien_value_struct(type);
+    memcpy(ans->ptr(), ptr, ans->__sizeof());
+    return ans;
+}
+
+/** static */
+alien_value* alien_value_struct::from_shr(const alien_type* type, lua_State* L, std::shared_ptr<char> mem, void* ptr) {
+    return new alien_value_struct(type, mem, ptr);
 }
 
 /* static */

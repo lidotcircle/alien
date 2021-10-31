@@ -40,8 +40,12 @@ alien_value* alien_type_basic::from_ptr(lua_State* L, void* ptr) const {
     return alien_value_basic::from_ptr(this, L, ptr);
 }
 
+alien_value* alien_type_basic::from_shr(lua_State* L, std::shared_ptr<char> mem, void* ptr) const {
+    return alien_value_basic::from_shr(this, L, mem, ptr);
+}
+
 alien_value* alien_type_basic::new_value(lua_State* L) const {
-    return new alien_value_basic(this, L);
+    return alien_value_basic::new_value(this, L);
 }
 
 bool alien_type_basic::is_integer() const {

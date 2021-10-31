@@ -34,7 +34,7 @@ int alien_value_ref_init(lua_State* L) {
     lua_pushliteral(L, "__index");
     lua_pushcfunction(L, alien_value_ref_get_member);
     lua_settable(L, -3);
-    lua_pushliteral(L, "__setindex");
+    lua_pushliteral(L, "__newindex");
     lua_pushcfunction(L, alien_value_ref_set_member);
     lua_settable(L, -3);
 
@@ -199,7 +199,10 @@ alien_value* alien_value_ref::from_ptr(const alien_type* type, lua_State* L, voi
     // TODO
     return new alien_value_ref(type, std::make_shared<char>(), ptr);
 }
-
+/** static */
+alien_value* alien_value_ref::from_shr(const alien_type* type, lua_State* L, std::shared_ptr<char> mem, void* ptr) {
+    return new alien_value_ref(type, mem, ptr);;
+}
 /** static */
 alien_value* alien_value_ref::new_value(const alien_type* type, lua_State* L) {
     return new alien_value_ref(type);

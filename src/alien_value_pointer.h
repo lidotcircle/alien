@@ -13,7 +13,7 @@ class alien_value_pointer: public alien_value {
 
     public:
         alien_value_pointer(const alien_type* type);
-        alien_value_pointer(const alien_type* type, void* ptr);
+        alien_value_pointer(const alien_type* type, std::shared_ptr<char> mem, void* ptr);
 
         virtual void to_lua(lua_State* L) const override;
         virtual alien_value* copy() const override;
@@ -21,11 +21,13 @@ class alien_value_pointer: public alien_value {
         alien_value* access_member(lua_State* L, const std::string&) const;
         alien_value* deref() const;
         bool is_null() const;
+        void change_ptr(void* ptr);
 
         virtual ~alien_value_pointer() override;
 
         static alien_value* from_lua(const alien_type* type, lua_State* L, int idx);
         static alien_value* from_ptr(const alien_type* type, lua_State* L, void* ptr);
+        static alien_value* from_shr(const alien_type* type, lua_State* L, std::shared_ptr<char> mem, void* ptr);
         static alien_value* new_value(const alien_type* type, lua_State* L);
 
         static bool is_this_value(const alien_type* type, lua_State* L, int idx);
