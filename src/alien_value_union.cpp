@@ -47,6 +47,14 @@ int alien_value_union_init(lua_State* L)
     return 0;
 }
 
+int alien_value_union_new(lua_State* L) {
+    alien_type* uniontype = alien_checktype(L, 1);
+    std::unique_ptr<alien_value> val(uniontype->new_value(L));
+    val->to_lua(L);
+
+    return 1;
+}
+
 static int alien_value_union_gc(lua_State* L)
 {
     alien_value_union* s = alien_checkunion(L, 1);

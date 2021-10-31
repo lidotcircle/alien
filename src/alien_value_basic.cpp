@@ -1,3 +1,4 @@
+#include "alien_type.h"
 #include "alien_value_basic.h"
 #include <memory>
 #include <assert.h>
@@ -170,5 +171,19 @@ alien_value_basic* alien_value_basic::checkvalue(const alien_type* type, lua_Sta
 
 int alien_value_basic_init(lua_State* L) {
     return 0;
+}
+
+int alien_value_basic_new(lua_State* L) {
+    auto type = alien_checktype(L, 1);
+
+    if (lua_gettop(L) > 1) {
+        std::unique_ptr<alien_value> val(type->from_lua(L, 2));
+        val->to_lua(L);
+    } else {
+        std::unique_ptr<alien_value> val(type->new_value(L));
+        val->to_lua(L);
+    }
+
+    return 1;
 }
 

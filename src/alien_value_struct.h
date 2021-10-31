@@ -27,5 +27,6 @@ class alien_value_struct: public alien_value {
 
 
 int alien_value_struct_init(lua_State* L);
+int alien_value_struct_new(lua_State* L);
 
 #endif // _ALIEN_VALUE_STRUCT_H_

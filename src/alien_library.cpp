@@ -184,12 +184,14 @@ int alien_library_init(lua_State* L) {
 
     alien_Library* al = new alien_Library(L, "default", nullptr);
     alien_Library** pal = (alien_Library **)lua_newuserdata(L, sizeof(alien_Library*));
+    *pal = al;
     luaL_setmetatable(L, ALIEN_LIBRARY_META);
 
     alien_push_alien(L);
     lua_pushliteral(L, ALIEN_LIBRARY_DEFAULT_LIB_GN);
     lua_pushvalue(L, -3);
     lua_settable(L, -3);
+    lua_pop(L, 2);
 
     return 0;
 }

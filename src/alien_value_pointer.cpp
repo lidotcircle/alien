@@ -52,6 +52,14 @@ int alien_value_pointer_init(lua_State* L) {
     return 0;
 }
 
+int alien_value_pointer_new(lua_State* L) {
+    alien_type* ptrtype = alien_checktype(L, 1);
+    std::unique_ptr<alien_value> val(ptrtype->from_lua(L, 1));
+    val->to_lua(L);
+
+    return 1;
+}
+
 static int alien_value_pointer_gc(lua_State* L) {
     alien_value_pointer* pointer = alien_checkpointer(L, 1);
     delete pointer;

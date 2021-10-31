@@ -114,6 +114,35 @@ buffer_access_type
     return 0;
 }
 
+int alien_value_buffer_new(lua_State* L) {
+    auto type = alien_checktype(L, 1);
+    assert(type->is_buffer());
+
+    if (lua_gettop(L) == 1) {
+        std::unique_ptr<alien_value> val(type->new_value(L));
+        val->to_lua(L);
+        return 1;
+    }
+
+    if (lua_isinteger(L, 2)) {
+        size_t len = lua_tointeger(L, 2);
+        if (len < 0)
+            return luaL_error(L, "alien: buffer length must be positive");
+        std::unique_ptr<alien_value> val(new alien_value_buffer(type, len));
+        val->to_lua(L);
+        return 1;
+    } else if (lua_isstring(L, 2)) {
+        size_t len = lua_rawlen(L, 2);
+        len++;
+        std::unique_ptr<alien_value> val(new alien_value_buffer(type, len));
+        memcpy(*static_cast<char**>(val->ptr()), lua_tostring(L, 2), len);
+        val->to_lua(L);
+        return 1;
+    } else {
+        return luaL_error(L, "alien: invalid buffer constructor");
+    }
+}
+
 static int alien_buffer_gc(lua_State* L) {
     alien_value_buffer* vb = alien_checkbuffer(L, 1);
     delete vb;

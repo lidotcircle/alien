@@ -42,6 +42,14 @@ int alien_value_ref_init(lua_State* L) {
     return 0;
 }
 
+int alien_value_ref_new(lua_State* L) {
+    alien_type* reftype = alien_checktype(L, 1);
+    std::unique_ptr<alien_value> val(reftype->from_lua(L, 1));
+    val->to_lua(L);
+
+    return 1;
+}
+
 static int alien_value_ref_gc(lua_State* L) {
     alien_value_ref* ref = alien_checkref(L, 1);
     delete ref;

@@ -50,5 +50,6 @@ class alien_value_callback: public alien_value {
 };
 
 int alien_value_callback_init(lua_State* L);
+int alien_value_callback_new(lua_State* L);
 
 #endif // _ALIEN_VALUE_CALLBACK_H_

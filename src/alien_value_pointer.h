@@ -34,5 +34,6 @@ class alien_value_pointer: public alien_value {
 
 
 int alien_value_pointer_init(lua_State* L);
+int alien_value_pointer_new(lua_State* L);
 
 #endif // _ALIEN_VALUE_POINTER_H_

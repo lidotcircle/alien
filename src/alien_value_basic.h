@@ -24,5 +24,6 @@ class alien_value_basic: public alien_value {
 
 
 int alien_value_basic_init(lua_State* L);
+int alien_value_basic_new(lua_State* L);
 
 #endif // _ALIEN_VALUE_BASIC_H_

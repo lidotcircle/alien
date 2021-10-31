@@ -47,6 +47,14 @@ int alien_value_struct_init(lua_State* L)
     return 0;
 }
 
+int alien_value_struct_new(lua_State* L) {
+    alien_type* structtype = alien_checktype(L, 1);
+    std::unique_ptr<alien_value> val(structtype->new_value(L));
+    val->to_lua(L);
+
+    return 1;
+}
+
 static int alien_value_struct_gc(lua_State* L)
 {
     alien_value_struct* s = alien_checkstruct(L, 1);

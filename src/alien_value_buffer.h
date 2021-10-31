@@ -47,5 +47,6 @@ class alien_value_buffer: public alien_value {
 };
 
 int alien_value_buffer_init(lua_State* L);
+int alien_value_buffer_new(lua_State* L);
 
 #endif // _ALIEN_VALUE_BUFFER_H_

@@ -61,3 +61,11 @@ int alien_value_string_init(lua_State* L) {
     return 0;
 }
 
+int alien_value_string_new(lua_State* L) {
+    alien_type* stringtype = alien_checktype(L, 1);
+    std::unique_ptr<alien_value> val(stringtype->from_lua(L, 1));
+    val->to_lua(L);
+
+    return 1;
+}
+

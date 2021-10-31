@@ -62,6 +62,7 @@ int alien_function_init(lua_State *L) {
     lua_pushcfunction(L, alien_function__index);
     lua_settable(L, -3);
 
+    lua_pop(L, 1);
     return 0;
 }
 
@@ -120,30 +121,10 @@ static int alien_function_types(lua_State* L) {
     alien_Function **paf = alien_checkfunction(L, 1);
     alien_Function *af = *paf;
 
+    ffi_abi abi = FFI_DEFAULT_ABI;
     alien_type* ret = nullptr;
     vector<alien_type*> params;
-
-    if (!lua_istable(L, 2)) {
-        return luaL_error(L, "alien: bad type definition");
-    }
-
-    lua_getfield(L, 2, "abi");
-    ffi_abi abi = ffi_abis[luaL_checkoption(L, -1, "default", ffi_abi_names)];
-    lua_getfield(L, 2, "ret");
-    if (lua_isnil(L, -1))
-        return luaL_error(L, "alien: return type should be specified");
-    ret = alien_checktype(L, -1);
-    lua_pop(L, 2);
-
-    size_t nparams = luaL_len(L, 2);
-    for(size_t i=1;i<=nparams;i++) {
-        lua_rawgeti(L, 2, i);
-
-        alien_type* para_type = alien_checktype(L, -1);
-        params.push_back(para_type);
-
-        lua_pop(L, 1);
-    }
+    std::tie(abi, ret, params) = alien_function__parse_types_table(L, 2);
 
     if (!af->define_types(abi, ret, params)) {
         return luaL_error(L, "alien: define function type failed");
@@ -212,6 +193,41 @@ int alien_function__make_function(lua_State *L, alien_Library* lib, void *fn, co
     *paf = af;
     luaL_setmetatable(L, ALIEN_FUNCTION_META);
     return 1;
+}
+
+std::tuple<ffi_abi,alien_type*,std::vector<alien_type*>>
+    alien_function__parse_types_table(lua_State *L, int idx) 
+{
+    alien_type* ret = nullptr;
+    vector<alien_type*> params;
+
+    if (!lua_istable(L, idx)) {
+        luaL_error(L, "alien: bad type definition");
+        return std::make_tuple(FFI_DEFAULT_ABI, ret, params);
+    }
+
+    lua_getfield(L, 2, "abi");
+    ffi_abi abi = ffi_abis[luaL_checkoption(L, -1, "default", ffi_abi_names)];
+
+    lua_getfield(L, 2, "ret");
+    if (lua_isnil(L, -1)) {
+        luaL_error(L, "alien: return type should be specified");
+        return std::make_tuple(FFI_DEFAULT_ABI, ret, params);
+    }
+    ret = alien_checktype(L, -1);
+    lua_pop(L, 2);
+
+    size_t nparams = luaL_len(L, 2);
+    for(size_t i=1;i<=nparams;i++) {
+        lua_rawgeti(L, 2, i);
+
+        alien_type* para_type = alien_checktype(L, -1);
+        params.push_back(para_type);
+
+        lua_pop(L, 1);
+    }
+
+    return std::make_tuple(abi, ret, params);
 }
 
 int alien_function_new(lua_State *L) {

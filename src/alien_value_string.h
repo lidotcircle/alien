@@ -29,5 +29,6 @@ class alien_value_string: public alien_value {
 
 
 int alien_value_string_init(lua_State* L);
+int alien_value_string_new(lua_State* L);
 
 #endif // _ALIEN_VALUE_STRING_H_

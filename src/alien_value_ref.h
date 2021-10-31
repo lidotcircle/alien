@@ -41,5 +41,6 @@ class alien_value_ref: public alien_value {
 
 
 int alien_value_ref_init(lua_State* L);
+int alien_value_ref_new(lua_State* L);
 
 #endif // _ALIEN_VALUE_REF_H_

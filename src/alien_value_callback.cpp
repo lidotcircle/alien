@@ -1,4 +1,5 @@
 #include "alien_value_callback.h"
+#include "alien_function.h"
 #include <vector>
 #include <string>
 #include <memory>
@@ -13,6 +14,7 @@ using namespace std;
 static int alien_value_callback_gc(lua_State* L);
 static int alien_value_callback_tostring(lua_State* L);
 static int alien_value_callback_addr(lua_State* L);
+static int alien_value_callback_new__(lua_State* L);
 
 int alien_value_callback_init(lua_State* L) {
     luaL_newmetatable(L, ALIEN_VALUE_CALLBACK_META);
@@ -34,6 +36,17 @@ int alien_value_callback_init(lua_State* L) {
 
     lua_pop(L, 1);
     return 0;
+}
+
+int alien_value_callback_new(lua_State* L) {
+    if (lua_gettop(L) != 3)
+        return luaL_error(L, "alien_value_callback_new: invalid arguments");
+
+    lua_pushcfunction(L, alien_value_callback_new__);
+    lua_pushvalue(L, 2);
+    lua_pushvalue(L, 3);
+    lua_call(L, 2, 1);
+    return 1;
 }
 
 static bool alien_iscallback(lua_State* L, int idx) {
@@ -59,6 +72,22 @@ static int alien_value_callback_tostring(lua_State* L) {
 static int alien_value_callback_addr(lua_State* L) {
     auto vc = alien_checkcallback(L, 1);
     lua_pushinteger(L, reinterpret_cast<ptrdiff_t>(vc->ptr()));
+    return 1;
+}
+
+static int alien_value_callback_new__(lua_State* L) {
+    if (!lua_isfunction(L, 1) || !lua_istable(L, 2))
+        return luaL_error(L, "alien_value_callback_new: invalid arguments");
+
+    ffi_abi abi = FFI_DEFAULT_ABI;
+    alien_type* rettype = nullptr;
+    vector<alien_type*> params;
+
+    std::tie(abi, rettype, params) = alien_function__parse_types_table(L, 2);
+
+    auto cbtype = alien_type_byname(L, "callback");
+    alien_value_callback cb(cbtype, L, 1, abi, rettype, params);
+    cb.to_lua(L);
     return 1;
 }
 

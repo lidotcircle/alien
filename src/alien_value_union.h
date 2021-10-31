@@ -26,5 +26,6 @@ class alien_value_union: public alien_value {
 };
 
 int alien_value_union_init(lua_State* L);
+int alien_value_union_new(lua_State* L);
 
 #endif // _ALIEN_VALUE_UNION_H_

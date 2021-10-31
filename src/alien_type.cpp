@@ -108,12 +108,40 @@ alien_type* alien_checktype(lua_State* L, int idx)
     return *t;
 }
 
-static int alien_push_type_table(lua_State* L) {
+int alien_push_type_table(lua_State* L) {
     alien_push_alien(L);
     lua_pushliteral(L, ALIEN_TYPE_TABLE);
     lua_gettable(L, -2);
+    assert(lua_istable(L, -1));
     lua_remove(L, -2);
     return 1;
+}
+
+alien_type* alien_type_byname(lua_State* L, const char* name)
+{
+    alien_push_type_table(L);
+    lua_pushstring(L, name);
+    lua_gettable(L, -2);
+
+    if (lua_isnil(L, -1)) {
+        lua_pop(L, 2);
+        return nullptr;
+    } else {
+        auto ans = alien_checktype(L, -1);
+        lua_pop(L, 2);
+        return ans;
+    }
+}
+
+alien_type* alien_reftype(lua_State* L, alien_type* type) {
+    if (type->is_ref())
+        throw runtime_error("alien: type is already a reference");
+
+    return nullptr;
+}
+
+alien_type* alien_ptrtype(lua_State* L, alien_type* type) {
+    return nullptr;
 }
 
 static int alien_types_new(lua_State* L) {
@@ -163,14 +191,14 @@ static int alien_types_register_basic(lua_State* L, const char* tname, ffi_type*
     *udata = new_type;
 
     lua_settable(L, -3);
-    return 1;
+    lua_pop(L, 2);
+    return 0;
 }
 
 int alien_types_init(lua_State* L) {
-    if (!lua_istable(L, 1))
-        return luaL_error(L, "alien: register alien types failed, illegal argument");
-
+    auto n = lua_gettop(L);
     luaL_newmetatable(L, ALIEN_TYPE_META);
+
     lua_pushliteral(L, "__gc");
     lua_pushcfunction(L, alien_types_gc);
     lua_settable(L, -3);
@@ -191,14 +219,33 @@ int alien_types_init(lua_State* L) {
     lua_pop(L, 1);
 
     alien_push_alien(L);
-    lua_newtable(L);
     lua_pushliteral(L, ALIEN_TYPE_TABLE);
+    lua_newtable(L);
     lua_settable(L, -3);
     lua_pop(L, 1);
 
-#define MENTRY(_a, _b) alien_types_register_basic(L, #_a, &_b); lua_pop(L, 1);
+#define MENTRY(_a, _b) alien_types_register_basic(L, #_a, &_b);
     basic_type_map
 #undef MENTRY
+
+    alien_type* buftype = new alien_type_buffer();
+    alien_type* strtype = new alien_type_string();
+    alien_type* cbtype  = new alien_type_callback();
+    vector<pair<string, alien_type*>> types = {
+        {buftype->__typename(), buftype},
+        {strtype->__typename(), strtype},
+        {cbtype->__typename(),  cbtype}
+    };
+
+    alien_push_type_table(L);
+    for(auto& t : types) {
+        lua_pushstring(L, t.first.c_str());
+        alien_type** ud = static_cast<alien_type**>(lua_newuserdata(L, sizeof(alien_type*)));
+        luaL_setmetatable(L, ALIEN_TYPE_META);
+        *ud = t.second;
+        lua_settable(L, -3);
+    }
+    lua_pop(L, 1);
 
     return 0;
 }

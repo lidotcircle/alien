@@ -4,6 +4,7 @@
 #include "alien_type.h"
 #include "alien_value.h"
 #include "alien.h"
+#include <assert.h>
 
 #define MYNAME    "alien"
 #define MYVERSION MYNAME " library for " LUA_VERSION " / " VERSION
@@ -21,34 +22,6 @@ static const luaL_Reg alienlib[] = {
     {"defref",       alien_types_defref},
     {"defpointer",   alien_types_defpointer},
     {"alias",        alien_types_alias},
-/*
-    {"align",        alien_align},
-    {"tag",          alien_register},
-    {"wrap",         alien_wrap},
-    {"rewrap",       alien_rewrap},
-    {"unwrap",       alien_unwrap},
-    {"tostring",     alien_udata2str},
-    {"isnull",       alien_isnull},
-    {"sizeof",       alien_sizeof},
-    {"tochar",       alien_udata2char},
-    {"toshort",      alien_udata2short},
-    {"toushort",     alien_udata2ushort},
-    {"toint",        alien_udata2int},
-    {"touint",       alien_udata2uint},
-    {"tolong",       alien_udata2long},
-    {"toulong",      alien_udata2ulong},
-    {"toptrdiff_t",  alien_udata2ptrdiff_t},
-    {"tosize_t",     alien_udata2size_t},
-    {"tofloat",      alien_udata2float},
-    {"todouble",     alien_udata2double},
-    {"buffer",       alien_buffer_new},
-    {"callback",     alien_callback_new},
-    {"table",        alien_table_new},
-    {"errno",        alien_errno},
-    {"memmove",      alien_memmove},
-    {"memset",       alien_memset},
-*/
-
     {NULL, NULL},
 };
 
@@ -59,19 +32,33 @@ extern "C" __EXPORT int luaopen_alien_c(lua_State *L) {
     lua_pushvalue(L, -1);
     lua_setglobal(L, ALIEN_LIBRARY_GLOBAL_REF);
 
-    /* Version */
+    // version
     lua_pushliteral(L, MYVERSION);
     lua_setfield(L, -2, "version");
 
-    /* Set platform */
+    // platform
     lua_pushliteral(L, PLATFORM);
     lua_setfield(L, -2, "platform");
 
-    alien_library_init (L);
-    alien_function_init(L);
-    alien_types_init   (L);
-    alien_value_init   (L);
+    auto n = lua_gettop(L);
 
+    alien_library_init (L);
+    assert(lua_gettop(L) == n);
+
+    alien_function_init(L);
+    assert(lua_gettop(L) == n);
+
+    alien_types_init(L);
+    assert(lua_gettop(L) == n);
+
+    alien_value_init(L);
+    assert(lua_gettop(L) == n);
+
+    // types
+    alien_push_type_table(L);
+    lua_setfield(L, -2, "types");
+
+    assert(lua_istable(L, -1));
     return 1;
 }
 

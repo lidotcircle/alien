@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <tuple>
 #include "alien.h"
 #include "alien_type.h"
 #include "alien_library.h"
@@ -53,6 +54,7 @@ class alien_Function {
 int alien_function_init(lua_State *L);
 
 int alien_function__make_function(lua_State *L, alien_Library* lib, void *fn, const std::string& name);
+std::tuple<ffi_abi,alien_type*,std::vector<alien_type*>> alien_function__parse_types_table(lua_State *L, int idx);
 
 int alien_function_new(lua_State *L);
 
