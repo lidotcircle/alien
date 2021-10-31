@@ -30,7 +30,15 @@ EXPORT(int) get2times(int n) {
 }
 
 EXPORT(void) print_string(char *s) {
-    printf("%s\n", s);
+    int n = strlen(s) > 0;
+}
+
+EXPORT(int) do2and4(int (*f)(int, int)) {
+    return f(2, 4);
+}
+
+EXPORT(int) add2ints(int a, int b) {
+    return a + b;
 }
 
 /* some functions handy for testing */

@@ -79,3 +79,20 @@ local sabc = sumabc(f)
 assert(sabc == 300)
 assert(sabc == f.a + f.b)
 
+-- callback
+local cb1 = alien.callback(function(a, b) return a * b end, {
+    ret = alien.types.int,
+    alien.types.int,
+    alien.types.int
+})
+local addtwo = testl.add2ints
+addtwo:types({ret = alien.types.int, alien.types.int, alien.types.int})
+addtwo:hook(cb1)
+--[[
+local at1 = addtwo(100, 200)
+assert(at1 == 20000)
+--]]
+local do2and4 = testl.do2and4
+do2and4:types{ret = alien.types.int, alien.types.callback}
+local dv1 = do2and4(cb1)
+assert(dv1 == 8)

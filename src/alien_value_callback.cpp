@@ -14,7 +14,6 @@ using namespace std;
 static int alien_value_callback_gc(lua_State* L);
 static int alien_value_callback_tostring(lua_State* L);
 static int alien_value_callback_addr(lua_State* L);
-static int alien_value_callback_new__(lua_State* L);
 
 int alien_value_callback_init(lua_State* L) {
     luaL_newmetatable(L, ALIEN_VALUE_CALLBACK_META);
@@ -75,7 +74,7 @@ static int alien_value_callback_addr(lua_State* L) {
     return 1;
 }
 
-static int alien_value_callback_new__(lua_State* L) {
+int alien_value_callback_new__(lua_State* L) {
     if (!lua_isfunction(L, 1) || !lua_istable(L, 2))
         return luaL_error(L, "alien_value_callback_new: invalid arguments");
 
@@ -103,17 +102,22 @@ alien_value_callback::alien_value_callback(const alien_type* type,
     ci->ret_type = ret;
     ci->params = params;
     ci->lfunc_ref = LUA_NOREF;
+    if (!ci->params.empty()) {
+        ci->ffi_params = 
+            std::shared_ptr<ffi_type*>(new ffi_type*[ci->params.size()], [](ffi_type** ptr) { delete[] ptr; });
+
+        for(size_t i=0;i<ci->params.size();i++)
+            ci->ffi_params.get()[i] = ci->params[i]->ffitype();
+    }
 
     ffi_status status = 
         ffi_prep_cif(&ci->cif, abi, ci->params.size(),
                      ci->ret_type->ffitype(), ci->ffi_params.get());
 
-    ci->ffi_params = std::shared_ptr<ffi_type*>(new ffi_type*[ci->params.size()], [](ffi_type** ptr) { delete[] ptr; });
-    for(size_t i=0;i<ci->params.size();i++)
-        ci->ffi_params.get()[i] = ci->params[i]->ffitype();
-
     if (status == FFI_OK)
-        status = ffi_prep_closure_loc(ci->closure, &ci->cif, &alien_value_callback::callback_call, this, ci->ffi_codeloc);
+        status = ffi_prep_closure_loc(ci->closure, &ci->cif,
+                                      &alien_value_callback::callback_call, 
+                                      this->pcallback_info.get(), ci->ffi_codeloc);
 
     if (status != FFI_OK) {
         ffi_closure_free(ci->closure);
@@ -161,8 +165,7 @@ alien_value_callback::callback_info::~callback_info() {
 
 /** static */
 void alien_value_callback::callback_call(ffi_cif* cif, void *resp, void **args, void* data) {
-    alien_value_callback* _this = static_cast<alien_value_callback*>(data);
-    auto vc = _this->pcallback_info;
+    auto vc = static_cast<callback_info*>(data);
     lua_State* L = vc->L;
 
     lua_rawgeti(L, LUA_REGISTRYINDEX, vc->lfunc_ref);

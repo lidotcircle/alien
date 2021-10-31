@@ -3,6 +3,7 @@
 #include "alien_dep_lua.h"
 #include "alien_type.h"
 #include "alien_value.h"
+#include "alien_value_callback.h"
 #include "alien.h"
 #include <assert.h>
 
@@ -16,6 +17,7 @@ static const luaL_Reg alienlib[] = {
     {"hasfunction",  alien_hasfunction},
 
     {"funcptr",      alien_function_new},
+    {"callback",     alien_value_callback_new__},
 
     {"defstruct",    alien_types_defstruct},
     {"defunion",     alien_types_defunion},
