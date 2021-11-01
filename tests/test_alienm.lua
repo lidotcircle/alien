@@ -79,6 +79,12 @@ local sabc = sumabc(f)
 assert(sabc == 300)
 assert(sabc == f.a + f.b)
 
+local abcnew = testl.struct1_new
+abcnew:types({ret = alien.types.abc, alien.types.int, alien.types.int})
+local f3 = abcnew(100, 200)
+assert(f3.a == 100)
+assert(f3.b == 200)
+
 -- callback
 local cb1 = alien.callback(function(a, b) return a * b end, {
     ret = alien.types.int,

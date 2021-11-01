@@ -19,6 +19,13 @@ struct struct1 {
     int b;
 };
 
+EXPORT(struct struct1) struct1_new(int a, int b) {
+    struct struct1 s;
+    s.a = a;
+    s.b = b;
+    return s;
+}
+
 EXPORT(int) sumstruct1(struct struct1 s) {
     int ans = s.a + s.b;
     s.a = 300;
