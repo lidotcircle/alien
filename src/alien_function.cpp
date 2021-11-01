@@ -258,8 +258,9 @@ int alien_function_new(lua_State *L) {
 }
 
 alien_Function::alien_Function(alien_Library* lib, void* fn, const string& name):
-    lib(lib), name(name), L(lib->get_lua_State()), fn(fn) , ret_type(nullptr),
-    params(), ffi_params(nullptr), hookhandle(nullptr), keepalive_ref(LUA_NOREF)
+    lib(lib), name(name), L(lib->get_lua_State()), fn(fn) ,
+    ret_type(nullptr), params(), ffi_params(nullptr),
+    hookhandle(nullptr), trampoline_ref(LUA_NOREF), keepalive_ref(LUA_NOREF)
 {
     alien_type* void_t = alien_type_byname(L, "void");
     this->define_types(FFI_DEFAULT_ABI, void_t, vector<alien_type*>());

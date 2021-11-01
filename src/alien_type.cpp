@@ -142,6 +142,14 @@ static int alien_types_new(lua_State* L) {
 
     return alien_operator_method_new(L, type);
 }
+static int alien_types_value_is(lua_State* L) {
+    alien_type* type = alien_checktype(L, 1);
+    if (lua_gettop(L) != 2)
+        throw std::runtime_error("alien: value_is() takes exactly 2 arguments");
+    bool isthis = type->is_this_type(L, 2);
+    lua_pushboolean(L, isthis);
+    return 1;
+}
 static int alien_types_sizeof(lua_State* L) {
     alien_type* type = alien_checktype(L, 1);
     lua_pushnumber(L, type->__sizeof());
@@ -204,6 +212,9 @@ int alien_types_init(lua_State* L) {
     lua_newtable(L);
     lua_pushliteral(L, "new");
     lua_pushcfunction(L, alien_types_new);
+    lua_settable(L, -3);
+    lua_pushliteral(L, "value_is");
+    lua_pushcfunction(L, alien_types_value_is);
     lua_settable(L, -3);
     lua_pushliteral(L, "sizeof");
     lua_pushcfunction(L, alien_types_sizeof);

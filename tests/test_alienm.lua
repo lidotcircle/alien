@@ -26,12 +26,21 @@ assert(n1 == 100)
 assert(n2 == 0xff)
 assert(n3 == 0xff)
 assert(n4 == 0xffff)
+assert(alien.types.uint8_t:value_is(0x11))
+assert(not alien.types.uint8_t:value_is(nil))
+assert(not alien.types.uint8_t:value_is(false))
+assert(not alien.types.uint8_t:value_is(""))
 
 -- string
 local s1 = alien.types.string:new("hello world")
 local s2 = alien.types.string:new()
 assert(s1 == "hello world")
 assert(s2 == "")
+assert(alien.types.string:value_is(0))
+assert(not alien.types.string:value_is(nil))
+assert(not alien.types.string:value_is(false))
+assert(alien.types.string:value_is(s1))
+assert(alien.types.string:value_is("nihao"))
 
 -- buffer
 local b1 = alien.types.buffer:new(1000)
@@ -50,6 +59,28 @@ assert(n2t == 200)
 local printstr = testl.print_string
 printstr:types({ret = alien.types.void, alien.types.string})
 printstr("hello world")
+
+-- string test2
+local helloworld = testl.helloworld
+helloworld:types({ret = alien.types.string})
+local hw = helloworld()
+assert(hw == "hello world")
+
+-- buffer test2
+local strlenint = testl.strlen_int
+local strlensize_t = testl.strlen_size_t
+strlenint:types({ret = alien.types.int, alien.types.string})
+strlensize_t:types({ret = alien.types.size_t, alien.types.string})
+local strl1 = strlenint("hello world")
+local strl2 = strlensize_t("hello world")
+assert(strl1 == 11)
+assert(strl2 == 11)
+local buf1 = alien.types.buffer:new(10)
+buf1:uint8_set(1, 0x31)
+buf1:uint8_set(2, 0x31)
+buf1:uint8_set(3, 0x00)
+local strl3 = strlenint(buf1)
+assert(strl3 == 2)
 
 -- struct
 alien.defstruct("abc", {
@@ -84,6 +115,16 @@ abcnew:types({ret = alien.types.abc, alien.types.int, alien.types.int})
 local f3 = abcnew(100, 200)
 assert(f3.a == 100)
 assert(f3.b == 200)
+
+
+-- union
+alien.defunion("union1", {
+    { "a", alien.types.int },
+    { "b", alien.types.int },
+})
+local uv1 = alien.types.union1:new()
+uv1.a = 100
+assert(uv1.b == 100)
 
 -- callback
 local cb1 = alien.callback(function(a, b) return a * b end, {

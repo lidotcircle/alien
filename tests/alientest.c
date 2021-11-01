@@ -48,6 +48,18 @@ EXPORT(int) add2ints(int a, int b) {
     return a + b;
 }
 
+EXPORT(const char*) helloworld() {
+    return "hello world";
+}
+
+EXPORT(int) strlen_int(char *s) {
+    return strlen(s);
+}
+
+EXPORT(size_t) strlen_size_t(char *s) {
+    return strlen(s);
+}
+
 /* some functions handy for testing */
 
 EXPORT(void *) my_malloc(size_t size) {
