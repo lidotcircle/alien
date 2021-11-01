@@ -6,7 +6,7 @@ static ffi_type ffi_type_alien_pointer = ffi_type_pointer;
 
 
 alien_type_pointer::alien_type_pointer(alien_type* _ptr_type):
-    alien_type("pointer"), _ptr_type(_ptr_type) {}
+    alien_type(_ptr_type->__typename() + "*"), _ptr_type(_ptr_type) {}
 
 ffi_type* alien_type_pointer::ffitype() {
     return &ffi_type_alien_pointer;

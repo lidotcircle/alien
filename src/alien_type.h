@@ -61,8 +61,6 @@ int alien_types_init(lua_State* L);
 /** lua c functions */
 int alien_types_defstruct(lua_State* L);
 int alien_types_defunion(lua_State* L);
-int alien_types_defref(lua_State* L);
-int alien_types_defpointer(lua_State* L);
 int alien_types_alias(lua_State* L);
 int alien_types_getbyname(lua_State* L);
 

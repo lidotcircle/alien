@@ -2,6 +2,7 @@
 #include "alien_type_union.h"
 #include <string>
 #include <string.h>
+#include <assert.h>
 using namespace std;
 
 
@@ -49,6 +50,7 @@ int alien_value_union_init(lua_State* L)
 
 int alien_value_union_new(lua_State* L) {
     alien_type* uniontype = alien_checktype(L, 1);
+    assert(uniontype->is_union());
     std::unique_ptr<alien_value> val(uniontype->new_value(L));
     val->to_lua(L);
 
@@ -72,7 +74,7 @@ static int alien_value_union_index(lua_State* L)
     alien_value_union* s = alien_checkunion(L, 1);
     const char* key = luaL_checkstring(L, 2);
 
-   std::unique_ptr<alien_value> mem(s->get_member(key));
+    std::unique_ptr<alien_value> mem(s->get_member(key));
     if (mem == nullptr)
         return luaL_error(L, "union as no member %s", key);
 
@@ -126,7 +128,7 @@ void alien_value_union::to_lua(lua_State* L) const
         new alien_value_union(this->alientype(), this->_mem, const_cast<void*>(this->ptr()));
     alien_value_union** p = static_cast<alien_value_union**>(lua_newuserdata(L, sizeof(alien_value_union*)));
     *p = obj;
-    luaL_getmetatable(L, ALIEN_VALUE_UNION_META);
+    luaL_setmetatable(L, ALIEN_VALUE_UNION_META);
 }
 
 alien_value* alien_value_union::copy() const {
