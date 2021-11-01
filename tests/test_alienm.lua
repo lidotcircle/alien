@@ -11,11 +11,12 @@ assert(type(alien.version) == "string")
 assert(type(alien.platform) == "string")
 assert(type(alien.alias) == "function")
 
-assert(type(alien.types) == "table")
-for k,v in pairs(alien.types) do
-    assert(type(k) == "string")
-    assert(type(v) == "userdata")
-end
+assert(type(alien.types) == "userdata")
+local t, e = pcall(function()
+    alien.types.nnn = 100
+end)
+assert(t == false)
+assert(type(e) == "string")
 
 -- integer
 local n1 = alien.types.uint8_t:new(100)
@@ -123,7 +124,9 @@ alien.defunion("union1", {
     { "b", alien.types.int },
 })
 local uv1 = alien.types.union1:new()
+assert(type(uv1) == "userdata")
 uv1.a = 100
+assert(uv1.a == 100)
 assert(uv1.b == 100)
 
 -- callback
@@ -148,3 +151,6 @@ local do2and4 = testl.do2and4
 do2and4:types{ret = alien.types.int, alien.types.callback}
 local dv1 = do2and4(cb1)
 assert(dv1 == 8)
+
+-- pointer
+

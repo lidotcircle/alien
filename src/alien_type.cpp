@@ -9,6 +9,7 @@
 #include "alien_type_union.h"
 #include "alien_value.h"
 #include "alien_function.h"
+#include "alien_lua_util.h"
 #include <ctype.h>
 #include <assert.h>
 #include <vector>
@@ -107,7 +108,13 @@ int alien_push_type_table(lua_State* L) {
     alien_push_alien(L);
     lua_pushliteral(L, ALIEN_TYPE_TABLE);
     lua_gettable(L, -2);
-    assert(lua_istable(L, -1));
+    lua_remove(L, -2);
+    return 1;
+}
+
+static int alien_push_raw_type_table(lua_State* L) {
+    alien_push_type_table(L);
+    alien_rotable_rawtable(L, -1);
     lua_remove(L, -2);
     return 1;
 }
@@ -141,7 +148,7 @@ alien_type* alien_ptrtype(lua_State* L, alien_type* type) {
 
 static int alien_types_register_basic(lua_State* L, const char* tname, ffi_type* ffitype) {
     lua_pushstring(L, tname);
-    alien_push_type_table(L);
+    alien_push_raw_type_table(L);
     lua_pushvalue(L, -2);
     lua_gettable(L, -2);
     if (!lua_isnil(L, -1))
@@ -164,7 +171,6 @@ static int alien_types_tostring(lua_State* L);
 static int alien_types_index(lua_State* L);
 
 int alien_types_init(lua_State* L) {
-    auto n = lua_gettop(L);
     luaL_newmetatable(L, ALIEN_TYPE_META);
 
     lua_pushliteral(L, "__gc");
@@ -182,7 +188,7 @@ int alien_types_init(lua_State* L) {
 
     alien_push_alien(L);
     lua_pushliteral(L, ALIEN_TYPE_TABLE);
-    lua_newtable(L);
+    alien_rotable_new(L);
     lua_settable(L, -3);
     lua_pop(L, 1);
 
@@ -209,7 +215,7 @@ int alien_types_init(lua_State* L) {
         {cbtype->__typename(),  cbtype}
     };
 
-    alien_push_type_table(L);
+    alien_push_raw_type_table(L);
     for(auto& t : types) {
         lua_pushstring(L, t.first.c_str());
         alien_type** ud = static_cast<alien_type**>(lua_newuserdata(L, sizeof(alien_type*)));
@@ -298,7 +304,7 @@ static pair<alien_type*,string> ensure_type(lua_State* L, const string& type_n)
     if (type_n.empty())
         return make_pair(nullptr, "alien: illegal type name '" + type_n + "'");
 
-    alien_push_type_table(L);
+    alien_push_raw_type_table(L);
     lua_getfield(L, -1, type_n.c_str());
     if (!lua_isnil(L, -1)) {
         auto ans = alien_checktype(L, -1);
@@ -319,7 +325,7 @@ static pair<alien_type*,string> ensure_type(lua_State* L, const string& type_n)
 
 static pair<alien_type*,string> ensure_refto(lua_State* L, const string& type_n) 
 {
-    alien_push_type_table(L);
+    alien_push_raw_type_table(L);
     string new_typename = type_n + "&";
     lua_getfield(L, -1, new_typename.c_str());
     if (!lua_isnil(L, -1)) {
@@ -352,7 +358,7 @@ static pair<alien_type*,string> ensure_refto(lua_State* L, const string& type_n)
     luaL_setmetatable(L, ALIEN_TYPE_META);
     *ud = new_type;
 
-    alien_push_type_table(L);
+    alien_push_raw_type_table(L);
     lua_pushvalue(L, -2);
     lua_setfield(L, -2, new_typename.c_str());
     lua_pop(L, 2);
@@ -362,7 +368,7 @@ static pair<alien_type*,string> ensure_refto(lua_State* L, const string& type_n)
 
 static pair<alien_type*,string> ensure_ptrto(lua_State* L, const string& type_n) 
 {
-    alien_push_type_table(L);
+    alien_push_raw_type_table(L);
     string new_typename = type_n + "*";
     lua_getfield(L, -1, new_typename.c_str());
     if (!lua_isnil(L, -1)) {
@@ -394,7 +400,7 @@ static pair<alien_type*,string> ensure_ptrto(lua_State* L, const string& type_n)
     luaL_setmetatable(L, ALIEN_TYPE_META);
     *ud = new_type;
 
-    alien_push_type_table(L);
+    alien_push_raw_type_table(L);
     lua_pushvalue(L, -2);
     lua_setfield(L, -2, new_typename.c_str());
     lua_pop(L, 2);
@@ -495,7 +501,7 @@ int alien_types_defstruct(lua_State* L) {
     luaL_setmetatable(L, ALIEN_TYPE_META);
     *ud = new_type;
 
-    alien_push_type_table(L);
+    alien_push_raw_type_table(L);
     lua_pushvalue(L, 1);
     lua_pushvalue(L, -3);
     lua_settable(L, -3);
@@ -547,7 +553,7 @@ int alien_types_defunion(lua_State* L) {
     luaL_setmetatable(L, ALIEN_TYPE_META);
     *ud = new_type;
 
-    alien_push_type_table(L);
+    alien_push_raw_type_table(L);
     lua_pushvalue(L, 1);
     lua_pushvalue(L, -3);
     lua_settable(L, -3);
@@ -563,7 +569,7 @@ int alien_types_alias(lua_State* L) {
     if (!validate_typename(nname))
         return luaL_error(L, "alien: bad type name '%s'", nname);
 
-    alien_push_type_table(L);
+    alien_push_raw_type_table(L);
     lua_pushvalue(L, 1);
     lua_gettable(L, -2);
 

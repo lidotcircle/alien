@@ -5,6 +5,7 @@
 #include "alien_value.h"
 #include "alien_value_callback.h"
 #include "alien.h"
+#include "alien_lua_util.h"
 #include <assert.h>
 
 #define MYNAME    "alien"
@@ -42,6 +43,9 @@ extern "C" __EXPORT int luaopen_alien_c(lua_State *L) {
     lua_setfield(L, -2, "platform");
 
     auto n = lua_gettop(L);
+
+    alien_rotable_init (L);
+    assert(lua_gettop(L) == n);
 
     alien_library_init (L);
     assert(lua_gettop(L) == n);
