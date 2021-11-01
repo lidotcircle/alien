@@ -11,8 +11,8 @@ class alien_value_ref: public alien_value {
         struct ref_info {
             alien_value* aval;
             alien_type* ref_type;
-            std::shared_ptr<char> __uptr;
             void* ref_ptr;
+            std::shared_ptr<char> shared_mem;
 
             ~ref_info();
         };

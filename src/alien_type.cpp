@@ -12,6 +12,7 @@
 #include <assert.h>
 #include <vector>
 #include <string>
+#include <stdexcept>
 #include <ffi.h>
 using namespace std;
 
@@ -127,7 +128,7 @@ alien_type* alien_type_byname(lua_State* L, const char* name)
 
 alien_type* alien_reftype(lua_State* L, alien_type* type) {
     if (type->is_ref())
-        throw runtime_error("alien: type is already a reference");
+        throw std::runtime_error("alien: type is already a reference");
 
     return nullptr;
 }

@@ -2,6 +2,7 @@
 #include "alien_type_ref.h"
 #include "alien_value_struct.h"
 #include "alien_value_union.h"
+#include <stdexcept>
 #include <assert.h>
 #include <string.h>
 using namespace std;
@@ -86,9 +87,9 @@ alien_value_ref::alien_value_ref(const alien_type* type):
     assert(uv != nullptr);
     rinfo->ref_type = const_cast<alien_type*>(uv->ref_type());
 
-    rinfo->__uptr = std::shared_ptr<char>(new char[rinfo->ref_type->__sizeof()], std::default_delete<char[]>());
-    memset(rinfo->__uptr.get(), 0, rinfo->ref_type->__sizeof());
-    rinfo->ref_ptr = rinfo->__uptr.get();
+    rinfo->shared_mem = std::shared_ptr<char>(new char[rinfo->ref_type->__sizeof()], std::default_delete<char[]>());
+    memset(rinfo->shared_mem.get(), 0, rinfo->ref_type->__sizeof());
+    rinfo->ref_ptr = rinfo->shared_mem.get();
 
     *static_cast<void**>(this->ptr()) = rinfo->ref_ptr;
     this->init_value();
@@ -103,7 +104,7 @@ alien_value_ref::alien_value_ref(const alien_type* type, std::shared_ptr<char> m
     assert(uv != nullptr);
     rinfo->ref_type = const_cast<alien_type*>(uv->ref_type());
 
-    rinfo->__uptr = mem;
+    rinfo->shared_mem = mem;
     rinfo->ref_ptr = ptr;
 
     *static_cast<void**>(this->ptr()) = rinfo->ref_ptr;

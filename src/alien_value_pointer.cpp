@@ -2,6 +2,7 @@
 #include "alien_type_pointer.h"
 #include "alien_value_struct.h"
 #include "alien_value_union.h"
+#include <stdexcept>
 #include <assert.h>
 using namespace std;
 

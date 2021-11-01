@@ -1,6 +1,7 @@
 #include "alien_value_buffer.h"
 #include <string.h>
 #include <assert.h>
+#include <stdexcept>
 using namespace std;
 
 #define ALIEN_VALUE_BUFFER_META "alien_value_buffer_meta"

@@ -8,6 +8,7 @@
 #include "alien_value_struct.h"
 #include "alien_value_union.h"
 #include <memory>
+#include <stdexcept>
 #include <string.h>
 #include <assert.h>
 using namespace std;
