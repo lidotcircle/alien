@@ -153,7 +153,7 @@ static int alien_function_hook(lua_State* L) {
     alien_Function *af = alien_checkfunction(L, 1);
     alien_type* cbtype = alien_type_byname(L, "callback");
 
-    if (!lua_isinteger(L, 2)) {
+    if (lua_isinteger(L, 2)) {
         void* fn = reinterpret_cast<void*>(lua_tointeger(L, 2));
         af->hook(L, fn, LUA_NOREF);
     } else if (lua_islightuserdata(L, 2)) {
@@ -289,9 +289,9 @@ int alien_Function::call_from_lua(lua_State *L) {
     unique_ptr<void*[]> args;
     int nargs = lua_gettop(L) - 1;
     if (nargs != this->params.size())
-        return luaL_error(L, "alien: too %s arguments (function %s)",
+        return luaL_error(L, "alien: too %s arguments (function %s), expect %d but get %d",
                           nargs < this->params.size() ? "few" : "many",
-                          this->name.c_str());
+                          this->name.c_str(), this->params.size(), nargs);
     if(nargs > 0) args = make_unique<void*[]>(nargs);
     vector<std::unique_ptr<alien_value>> values;
     for(i = 0; i < nargs; i++) {
@@ -333,7 +333,11 @@ int alien_Function::hook(lua_State* L, void* jmpto, int objref) {
 
     int n = alien_function__make_function(L, this->lib, fn, "trampoline#" + this->name);
     assert(n == 1);
+    alien_Function* trampoline_func = alien_checkfunction(L, -1);
+    trampoline_func->define_types(this->cif.abi, this->ret_type, this->params);
+
     lua_pushvalue(L, -1);
+    this->hookhandle = hook;
     this->trampoline_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     this->keepalive_ref = objref;
 

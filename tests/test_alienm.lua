@@ -91,13 +91,18 @@ local cb1 = alien.callback(function(a, b) return a * b end, {
     alien.types.int,
     alien.types.int
 })
+assert(type(cb1) == "userdata")
 local addtwo = testl.add2ints
 addtwo:types({ret = alien.types.int, alien.types.int, alien.types.int})
+assert(addtwo.trampoline == nil)
 addtwo:hook(cb1)
---[[
 local at1 = addtwo(100, 200)
+local at2 = addtwo.trampoline(100, 200)
+addtwo:unhook()
+local at3 = addtwo(100, 200)
 assert(at1 == 20000)
---]]
+assert(at2 == 300)
+assert(at3 == 300)
 local do2and4 = testl.do2and4
 do2and4:types{ret = alien.types.int, alien.types.callback}
 local dv1 = do2and4(cb1)
