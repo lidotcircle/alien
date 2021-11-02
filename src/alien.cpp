@@ -20,6 +20,8 @@ static const luaL_Reg alienlib[] = {
     {"funcptr",      alien_function_new},
     {"callback",     alien_value_callback_new__},
 
+    {"copy", alien_value_copy},
+
     {"defstruct",    alien_types_defstruct},
     {"defunion",     alien_types_defunion},
     {"alias",        alien_types_alias},

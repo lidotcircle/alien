@@ -18,6 +18,26 @@ end)
 assert(t == false)
 assert(type(e) == "string")
 
+for n,f in pairs(testl) do
+    assert(type(n) == "string")
+    assert(type(f) == "userdata")
+    assert(alien.hasfunction(testl, n))
+end
+
+-- copy
+local c1 = alien.copy(100)
+assert(c1 == 100)
+local c2 = alien.copy("hello")
+assert(c2 == "hello")
+local c3 = alien.copy(true)
+assert(c3 == true)
+local c4 = alien.copy(nil)
+assert(c4 == nil)
+local c5 = alien.copy(0.0000001)
+assert(c5 == 0.0000001)
+local c6 = alien.copy(alien.types.buffer:new(100))
+assert(#c6 == 100)
+
 -- integer
 local n1 = alien.types.uint8_t:new(100)
 local n2 = alien.types.uint8_t:new(0x11ff)

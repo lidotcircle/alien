@@ -110,3 +110,46 @@ int alien_value_init(lua_State* L) {
     return 0;
 }
 
+int alien_value_copy(lua_State* L) {
+    if (lua_gettop(L) != 1)
+        return luaL_error(L, "alien: copy() require exactly 1 argument");
+
+    auto type = lua_type(L, 1);
+    switch (type) {
+        case LUA_TNIL:
+        case LUA_TNONE:
+        case LUA_TBOOLEAN:
+        case LUA_TNUMBER:
+        case LUA_TSTRING:
+        case LUA_TFUNCTION:
+        case LUA_TLIGHTUSERDATA:
+            return 1;
+        case LUA_TTHREAD:
+            return luaL_error(L, "alien: can't copy thread");
+        case LUA_TTABLE:
+            return luaL_error(L, "alien: can't copy table");
+        case LUA_TUSERDATA:
+            break;
+    }
+
+    // TODO
+    alien_value* val = nullptr;
+    if (alien_value_buffer::is_this_value(nullptr, L, 1))
+        val = alien_value_buffer::checkvalue(nullptr, L, 1);
+    else if (alien_value_pointer::is_this_value(nullptr, L, 1))
+        val = alien_value_pointer::checkvalue(nullptr, L, 1);
+    else if (alien_value_ref::is_this_value(nullptr, L, 1))
+        val = alien_value_ref::checkvalue(nullptr, L, 1);
+    else if (alien_value_struct::is_this_value(nullptr, L, 1))
+        val = alien_value_struct::checkvalue(nullptr, L, 1);
+    else if (alien_value_union::is_this_value(nullptr, L, 1))
+        val = alien_value_union::checkvalue(nullptr, L, 1);
+
+    if (val == nullptr)
+        return luaL_error(L, "alien: can't copy alien value");
+
+    auto vv = val->copy();
+    vv->to_lua(L);
+    return 1;
+}
+

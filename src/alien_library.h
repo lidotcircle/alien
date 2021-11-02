@@ -2,7 +2,7 @@
 #define _ALIEN_LIBRARY_H_
 
 #include <string>
-#include <vector>
+#include <set>
 #include "alien.h"
 
 class alien_Function;
@@ -13,7 +13,7 @@ class alien_Library {
         void* lib;
         std::string name;
         lua_State* L;
-        std::vector<std::string> funclist;
+        std::set<std::string> funclist;
         bool init_func_list;
 
     public:
@@ -25,7 +25,7 @@ class alien_Library {
 
         alien_Library(lua_State* L, const std::string& libname, void* libhandle);
 
-        const std::vector<std::string>& function_list();
+        const std::set<std::string>& function_list();
         bool has_function(const std::string& func);
         lua_State* get_lua_State();
 

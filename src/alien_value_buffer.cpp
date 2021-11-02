@@ -83,7 +83,7 @@ void alien_value_buffer::to_lua(lua_State* L) const {
 alien_value* alien_value_buffer::copy() const {
     auto vv = new alien_value_buffer(*this);
     vv->buf = std::shared_ptr<char>(new char[vv->buf_len], std::default_delete<char[]>());
-    memcpy(vv->_mem.get(), this->_mem.get(), this->buf_len);
+    memcpy(*static_cast<void**>(vv->ptr()), *static_cast<void*const*>(this->ptr()), this->buf_len);
     *static_cast<void**>(vv->ptr()) = vv->buf.get();
     return vv;
 }
@@ -212,7 +212,7 @@ alien_value* alien_value_buffer::from_lua(const alien_type* type, lua_State* L, 
         return nullptr;
 
     alien_value_buffer* vb = alien_checkbuffer(L, idx);
-    return vb->copy();
+    return new alien_value_buffer(*vb);
 }
 
 /** static */
@@ -232,13 +232,13 @@ alien_value* alien_value_buffer::new_value(const alien_type* type, lua_State* L)
 
 /** static */
 bool alien_value_buffer::is_this_value(const alien_type* type, lua_State* L, int idx) {
-    assert(type->is_buffer());
+    assert(!type || type->is_buffer());
     return alien_isbuffer(L, idx);
 }
 
 /** static */
 alien_value_buffer* alien_value_buffer::checkvalue(const alien_type* type, lua_State* L, int idx) {
-    assert(type->is_buffer());
+    assert(!type || type->is_buffer());
     return alien_checkbuffer(L, idx);
 }
 

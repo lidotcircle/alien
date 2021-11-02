@@ -96,14 +96,14 @@ alien_Library::alien_Library(lua_State* L, const string& libname, void* libhandl
     this->init_func_list = false;
 }
 
-const vector<string>& alien_Library::function_list() {
+const set<string>& alien_Library::function_list() {
     while (!this->init_func_list) {
         struct function_list* functions = lf_load(this->lib);
         if (functions == nullptr)
             break;
 
         for (size_t i=0;i<lf_size(functions);i++)
-            this->funclist.push_back(lf_index(functions, i));
+            this->funclist.insert(lf_index(functions, i));
 
         lf_free(functions);
         break;
@@ -161,24 +161,25 @@ static alien_Library* alien_checklibrary(lua_State*L, int idx) {
     return *static_cast<alien_Library **>(luaL_checkudata(L, idx, ALIEN_LIBRARY_META));
 }
 
-static int alien_library_get(lua_State *L);
-static int alien_library_tostring(lua_State *L);
 static int alien_library_gc(lua_State *L);
+static int alien_library_tostring(lua_State *L);
+static int alien_library_get(lua_State *L);
+static int alien_library_pairs(lua_State *L);
 
 int alien_library_init(lua_State* L) {
     luaL_newmetatable(L, ALIEN_LIBRARY_META);
 
-    lua_pushliteral(L, "__gc");
     lua_pushcfunction(L, alien_library_gc);
-    lua_settable(L, -3);
+    lua_setfield(L, -2, "__gc");
 
-    lua_pushliteral(L, "__index");
-    lua_pushcfunction(L, alien_library_get);
-    lua_settable(L, -3);
-
-    lua_pushliteral(L, "__tostring");
     lua_pushcfunction(L, alien_library_tostring);
-    lua_settable(L, -3);
+    lua_setfield(L, -2, "__tostring");
+
+    lua_pushcfunction(L, alien_library_get);
+    lua_setfield(L, -2, "__index");
+
+    lua_pushcfunction(L, alien_library_pairs);
+    lua_setfield(L, -2, "__pairs");
 
     lua_pop(L, 1);
 
@@ -226,13 +227,13 @@ int alien_load(lua_State *L) {
     return 1;
 }
 
-int alien_library_gc(lua_State *L) {
+static int alien_library_gc(lua_State *L) {
     alien_Library *al = alien_checklibrary(L, 1);
     delete al;
     return 0;
 }
 
-int alien_library_get(lua_State *L) {
+static int alien_library_get(lua_State *L) {
     alien_Library *al = alien_checklibrary(L, 1);
     const char *funcname = luaL_checkstring(L, 2);
 
@@ -253,10 +254,55 @@ int alien_library_get(lua_State *L) {
     return 1;
 }
 
-int alien_library_tostring(lua_State *L) {
+static int alien_library_tostring(lua_State *L) {
     alien_Library *al = alien_checklibrary(L, 1);
     lua_pushfstring(L, "alien library %s", al->libname().c_str());
     return 1;
+}
+
+static int alien_library_next(lua_State* L) {
+    alien_Library *al = alien_checklibrary(L, 1);
+    const char* key = nullptr;
+    if (lua_gettop(L) > 1 && !lua_isnil(L, 2))
+        key = luaL_checkstring(L, 2);
+
+    const set<string>& flist = al->function_list();
+    auto iter = flist.end();
+    if (key != nullptr) {
+        iter = flist.find(key);
+
+        if (iter == flist.end())
+            return luaL_error(L, "alien: bad key '%s' for library %s",
+                                 key, al->tostring().c_str());
+    }
+
+    if (iter == flist.end())
+        iter = flist.begin();
+    else
+        iter++;
+
+    if (iter != flist.end()) {
+        lua_pushstring(L, iter->c_str());
+        lua_pushcfunction(L, alien_library_get);
+        lua_pushvalue(L, 1);
+        lua_pushvalue(L, -3);
+        lua_call(L, 2, 1);
+    } else {
+        lua_pushnil(L);
+        lua_pushnil(L);
+    }
+
+    return 2;
+}
+
+static int alien_library_pairs(lua_State* L) {
+    alien_Library *al = alien_checklibrary(L, 1);
+    const set<string>& flist = al->function_list();
+
+    lua_pushcfunction(L, alien_library_next);
+    lua_pushvalue(L, -2);
+    lua_pushnil(L);
+    return 3;
 }
 
 int alien_functionlist(lua_State* L) {
