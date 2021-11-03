@@ -149,6 +149,13 @@ uv1.a = 100
 assert(uv1.a == 100)
 assert(uv1.b == 100)
 
+-- array
+local inta100 = alien.atype("int[0x100]")
+assert(type(inta100) == "userdata")
+local avv1 = inta100:new()
+avv1[1] = 1
+assert(avv1[1] == 1)
+
 -- callback
 local cb1 = alien.callback(function(a, b) return a * b end, {
     ret = alien.types.int,

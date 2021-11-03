@@ -47,6 +47,7 @@ class alien_type {
         virtual bool is_struct() const;
         virtual bool is_buffer() const;
         virtual bool is_union() const;
+        virtual bool is_array() const;
         virtual bool is_callback() const;
 
         virtual bool is_this_type(lua_State* L, int idx) const = 0;

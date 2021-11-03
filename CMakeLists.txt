@@ -49,6 +49,7 @@ target_sources(alien PRIVATE
     src/alien_type_string.cpp
     src/alien_type_struct.cpp
     src/alien_type_union.cpp
+    src/alien_type_array.cpp
 
     src/alien_value.cpp
     src/alien_value_basic.cpp
@@ -59,6 +60,7 @@ target_sources(alien PRIVATE
     src/alien_value_string.cpp
     src/alien_value_struct.cpp
     src/alien_value_union.cpp
+    src/alien_value_array.cpp
 
     src/utils.cpp
     )

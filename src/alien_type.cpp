@@ -7,6 +7,7 @@
 #include "alien_type_string.h"
 #include "alien_type_struct.h"
 #include "alien_type_union.h"
+#include "alien_type_array.h"
 #include "alien_value.h"
 #include "alien_function.h"
 #include "alien_lua_util.h"
@@ -15,6 +16,7 @@
 #include <vector>
 #include <string>
 #include <stdexcept>
+#include <sstream>
 #include <map>
 #include <ffi.h>
 using namespace std;
@@ -91,6 +93,7 @@ bool alien_type::is_string() const { return false; }
 bool alien_type::is_struct() const  { return false; }
 bool alien_type::is_buffer() const  { return false; }
 bool alien_type::is_union() const   { return false; }
+bool alien_type::is_array() const   { return false; }
 bool alien_type::is_callback() const{ return false; }
 
 static bool alien_istype(lua_State* L, int idx)
@@ -297,12 +300,13 @@ static int alien_types_tostring(lua_State* L) {
 
 static pair<alien_type*,string> ensure_type (lua_State* L, const string& type_n);
 static pair<alien_type*,string> ensure_refto(lua_State* L, const string& type_n);
+static pair<alien_type*,string> ensure_array(lua_State* L, const string& type_n, size_t n);
 static pair<alien_type*,string> ensure_ptrto(lua_State* L, const string& type_n);
 
 static pair<alien_type*,string> ensure_type(lua_State* L, const string& type_n) 
 {
     if (type_n.empty())
-        return make_pair(nullptr, "alien: illegal type name '" + type_n + "'");
+        return make_pair(nullptr, "alien: illegal type name '" + type_n + "' <1>");
 
     alien_push_raw_type_table(L);
     lua_getfield(L, -1, type_n.c_str());
@@ -318,6 +322,23 @@ static pair<alien_type*,string> ensure_type(lua_State* L, const string& type_n)
         return ensure_ptrto(L, type_n.substr(0, type_n.size()-1));
     } else if (lastchar == '&') {
         return ensure_refto(L, type_n.substr(0, type_n.size()-1));
+    } else if (lastchar == ']') {
+        size_t n = type_n.size() - 1;
+        while(n > 0 && type_n[n-1] != '[')
+            --n;
+
+        if (n == 0)
+            return make_pair(nullptr, "alien: illegal type name '" + type_n + "' <2>");
+
+        n--;
+        auto t = type_n.substr(0, n);
+        auto s = type_n.substr(n + 1, type_n.size()-n-2);
+        size_t sl = 0;
+        int array_size = std::stoi(s, &sl, 0);
+        if (array_size <= 0 || sl != s.size())
+            return make_pair(nullptr, "alien: illegal type name '" + type_n + "' <3>");
+
+        return ensure_array(L, t, array_size);
     } else {
         return make_pair(nullptr, "alien: type '" + type_n + "' not defined");
     }
@@ -403,6 +424,54 @@ static pair<alien_type*,string> ensure_ptrto(lua_State* L, const string& type_n)
     alien_push_raw_type_table(L);
     lua_pushvalue(L, -2);
     lua_setfield(L, -2, new_typename.c_str());
+    lua_pop(L, 2);
+
+    return make_pair(new_type, "");
+}
+
+static pair<alien_type*,string> ensure_array(lua_State* L, const string& type_n, size_t n)
+{
+    alien_push_raw_type_table(L);
+    string new_typename = type_n + "[" + std::to_string(n) + "]";
+    lua_getfield(L, -1, new_typename.c_str());
+    if (!lua_isnil(L, -1)) {
+        auto ans = alien_checktype(L, -1);
+        lua_pop(L, 2);
+        return make_pair(ans, "");
+    }
+    lua_pop(L, 2);
+
+    alien_type* tx = nullptr;
+    auto enret = ensure_type(L, type_n);
+    if (enret.first == nullptr)
+        return enret;
+    tx = enret.first;
+
+    if (tx->is_ref())
+        return make_pair(nullptr, "alien: cna't make array to reference");
+    else if (tx->is_buffer())
+        return make_pair(nullptr, "alien: can't make array to buffer");
+    else if (tx->is_callback())
+        return make_pair(nullptr, "alien: can't make array to callback");
+    else if (tx->is_string())
+        return make_pair(nullptr, "alien: can't make array to string");
+    else if (tx->is_void())
+        return make_pair(nullptr, "alien: can't make array to void");
+
+    alien_type_array* new_type = new alien_type_array(tx, n, FFI_DEFAULT_ABI);
+    alien_type** ud = static_cast<alien_type**>(lua_newuserdata(L, sizeof(alien_type*)));
+    luaL_setmetatable(L, ALIEN_TYPE_META);
+    *ud = new_type;
+
+    std::stringstream ss;
+    ss << type_n << "[0x" << std::hex << n << "]";
+    string new_typename_hex = ss.str();
+
+    alien_push_raw_type_table(L);
+    lua_pushvalue(L, -2);
+    lua_setfield(L, -2, new_typename.c_str());
+    lua_pushvalue(L, -2);
+    lua_setfield(L, -2, new_typename_hex.c_str());
     lua_pop(L, 2);
 
     return make_pair(new_type, "");

@@ -7,6 +7,7 @@
 #include "alien_value_string.h"
 #include "alien_value_struct.h"
 #include "alien_value_union.h"
+#include "alien_value_array.h"
 #include <memory>
 #include <stdexcept>
 #include <string.h>
@@ -31,6 +32,8 @@ int alien_operator_method_new(lua_State* L, alien_type* type) {
         return alien_value_struct_new(L);
     } else if (type->is_union()) {
         return alien_value_union_new(L);
+    } else if (type->is_array()) {
+        return alien_value_array_new(L);
     } else {
         return luaL_error(L, "alien: unsupported type");
     }
@@ -80,6 +83,7 @@ void alien_value::assignFromLua(lua_State* L, size_t idx) {
 #include "alien_value_string.h"
 #include "alien_value_struct.h"
 #include "alien_value_union.h"
+#include "alien_value_array.h"
 int alien_value_init(lua_State* L) {
     auto n = lua_gettop(L);
 
@@ -105,6 +109,9 @@ int alien_value_init(lua_State* L) {
     assert(n == lua_gettop(L) && lua_istable(L, -1));
 
     alien_value_union_init(L);
+    assert(n == lua_gettop(L) && lua_istable(L, -1));
+
+    alien_value_array_init(L);
     assert(n == lua_gettop(L) && lua_istable(L, -1));
 
     return 0;
@@ -148,7 +155,7 @@ int alien_value_copy(lua_State* L) {
     if (val == nullptr)
         return luaL_error(L, "alien: can't copy alien value");
 
-    auto vv = val->copy();
+    std::unique_ptr<alien_value> vv(val->copy());
     vv->to_lua(L);
     return 1;
 }
