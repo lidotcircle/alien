@@ -1,5 +1,6 @@
 #include "alien_value_struct.h"
 #include "alien_type_struct.h"
+#include "alien_exception.h"
 #include <string>
 #include <string.h>
 using namespace std;
@@ -74,7 +75,7 @@ static int alien_value_struct_index(lua_State* L)
 
     std::unique_ptr<alien_value> mem(s->get_member(key));
     if (mem == nullptr)
-        return luaL_error(L, "struct as no member %s", key);
+        throw AlienException("struct has no member %s", key);
 
     mem->to_lua(L);
     return 1;
@@ -86,7 +87,7 @@ static int alien_value_struct_newindex(lua_State* L)
     std::unique_ptr<alien_value> mb(s->get_member(key));
 
     if (mb == nullptr)
-        return luaL_error(L, "struct as no member %s", key);
+        throw AlienException("struct has no member %s", key);
 
     mb->assignFromLua(L, 3);
     return 0;

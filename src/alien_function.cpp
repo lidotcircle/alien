@@ -5,6 +5,8 @@
 #include <sstream>
 #include <vector>
 #include <map>
+#include "alien.h"
+#include "alien_exception.h"
 #include "alien_function.h"
 #include "alien_value_callback.h"
 #include "alien_value.h"
@@ -26,10 +28,8 @@ const char *const ffi_abi_names[] = { "sysv", "thiscall", "fastcall", "stdcall",
 #endif
 
 ffi_abi alien_checkabi(lua_State* L, int idx) {
-    if (!lua_isstring(L, idx)) {
-        luaL_error(L, "alien: abi should be specified as string");
-        return FFI_DEFAULT_ABI;
-    }
+    if (!lua_isstring(L, idx))
+        throw AlienInvalidArgumentException("abi should be specified as string");
 
     string na(lua_tostring(L, idx));
     bool found = false;
@@ -39,10 +39,8 @@ ffi_abi alien_checkabi(lua_State* L, int idx) {
             break;
         }
     }
-    if (!found) {
-        luaL_error(L, "alien: unsupport abi '%s' in current platform", na.c_str());
-        return FFI_DEFAULT_ABI;
-    }
+    if (!found)
+        throw AlienNotImplementedException("unsupported abi '%s' in current platform", na.c_str());
 
     ffi_abi abi = ffi_abis[luaL_checkoption(L, idx, "default", ffi_abi_names)];
     return abi;
@@ -57,15 +55,15 @@ static bool alien_isfunction(lua_State *L, int index) {
     return luaL_testudata(L, index, ALIEN_FUNCTION_META) != nullptr;
 }
 
-static int alien_function_gc(lua_State *L);
-static int alien_function_tostring(lua_State *L);
-static int alien_function_call(lua_State *L);
-static int alien_function__index(lua_State *L);
-static int alien_function_types(lua_State *L);
-static int alien_function_hook(lua_State *L);
-static int alien_function_unhook(lua_State *L);
-static int alien_function_addr(lua_State *L);
-static int alien_function_trampoline(lua_State *L);
+ALIEN_LUA_FUNC static int alien_function_gc(lua_State *L);
+ALIEN_LUA_FUNC static int alien_function_tostring(lua_State *L);
+ALIEN_LUA_FUNC static int alien_function_call(lua_State *L);
+ALIEN_LUA_FUNC static int alien_function__index(lua_State *L);
+ALIEN_LUA_FUNC static int alien_function_types(lua_State *L);
+ALIEN_LUA_FUNC static int alien_function_hook(lua_State *L);
+ALIEN_LUA_FUNC static int alien_function_unhook(lua_State *L);
+ALIEN_LUA_FUNC static int alien_function_addr(lua_State *L);
+ALIEN_LUA_FUNC static int alien_function_trampoline(lua_State *L);
 
 int alien_function_init(lua_State *L) {
     luaL_newmetatable(L, ALIEN_FUNCTION_META);
@@ -99,7 +97,8 @@ static map<string, lua_CFunction> function_properties = {
     { "addr",       alien_function_addr },
     { "trampoline", alien_function_trampoline },
 };
-static int alien_function__index(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_function__index(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     const string method = luaL_checkstring(L, 2);
     auto fn = function_methods.find(method);
     if (fn != function_methods.end()) {
@@ -111,31 +110,42 @@ static int alien_function__index(lua_State* L) {
     if (fn != function_properties.end()) {
         lua_pushcfunction(L, fn->second);
         lua_pushvalue(L, 1);
-        lua_call(L, 1, 1);
+        if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
+            const char* erro = lua_tostring(L, -1);
+            throw AlienLuaThrow("%s", erro);
+        }
         return 1;
     }
 
-    return luaL_error(L, "alien: not found method / properties %s in alien_function", method.c_str());
+    throw AlienNotImplementedException("method / properties %s not found in alien_function", method.c_str());
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_function_call(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_function_call(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_Function* af = alien_checkfunction(L, 1);
     return af->call_from_lua(L);
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_function_tostring(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_function_tostring(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_Function* af = alien_checkfunction(L, 1);
     lua_pushstring(L, af->tostring().c_str());
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_function_gc(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_function_gc(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_Function* af = alien_checkfunction(L, 1);
     delete af;
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_function_types(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_function_types(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_Function *af = alien_checkfunction(L, 1);
 
     ffi_abi abi = FFI_DEFAULT_ABI;
@@ -144,13 +154,15 @@ static int alien_function_types(lua_State* L) {
     bool is_variadic = false;
     std::tie(abi, ret, params, is_variadic) = alien_function__parse_types_table(L, 2);
 
-    if (!af->define_types(abi, ret, params, is_variadic)) {
-        return luaL_error(L, "alien: define function type failed");
-    }
+    if (!af->define_types(abi, ret, params, is_variadic))
+        throw AlienException("define function type failed");
+
     return 0;
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_function_hook(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_function_hook(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_Function *af = alien_checkfunction(L, 1);
     alien_type* cbtype = alien_type_byname(L, "callback");
 
@@ -171,27 +183,34 @@ static int alien_function_hook(lua_State* L) {
         int ref = luaL_ref(L, LUA_REGISTRYINDEX);
         af->hook(L, cb->funcaddr(), ref);
     } else {
-        return luaL_error(L, "alien: unexpected hook parameter");
+        throw AlienInvalidArgumentException("unexpected hook parameter");
     }
 
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_function_unhook(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_function_unhook(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_Function *af = alien_checkfunction(L, 1);
     af->unhook(L);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_function_addr(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_function_addr(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_Function *af = alien_checkfunction(L, 1);
     lua_pushnumber(L, reinterpret_cast<ptrdiff_t>(af->funcaddr()));
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_function_trampoline(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_function_trampoline(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_Function *af = alien_checkfunction(L, 1);
     return af->trampoline(L);
+    ALIEN_EXCEPTION_END();
 }
 
 int alien_function__make_function(lua_State *L, alien_Library* lib, void *fn, const string& name) {
@@ -206,29 +225,26 @@ int alien_function__make_function(lua_State *L, alien_Library* lib, void *fn, co
 std::tuple<ffi_abi,alien_type*,std::vector<alien_type*>,bool>
     alien_function__parse_types_table(lua_State *L, int idx) 
 {
-    alien_type* ret = nullptr;
     vector<alien_type*> params;
 
-    if (!lua_istable(L, idx)) {
-        luaL_error(L, "alien: bad type definition");
-        return std::make_tuple(FFI_DEFAULT_ABI, ret, params,false);
-    }
+    if (!lua_istable(L, idx))
+        throw AlienInvalidArgumentException("bad type definition");
 
     bool is_variadic = false;
+    ffi_abi abi = FFI_DEFAULT_ABI;
+    alien_type* ret = nullptr;
+
     lua_getfield(L, idx, "is_variadic");
     if (lua_isboolean(L, -1))
         is_variadic = lua_toboolean(L, -1);
 
-    ffi_abi abi = FFI_DEFAULT_ABI;
     lua_getfield(L, idx, "abi");
     if (!lua_isnil(L, -1))
         abi = alien_checkabi(L, -1);
 
     lua_getfield(L, idx, "ret");
-    if (lua_isnil(L, -1)) {
-        luaL_error(L, "alien: return type should be specified");
-        return std::make_tuple(FFI_DEFAULT_ABI, ret, params,false);
-    }
+    if (lua_isnil(L, -1))
+        throw AlienInvalidArgumentException("return type should be specified");
     ret = alien_checktype(L, -1);
     lua_pop(L, 3);
 
@@ -245,14 +261,15 @@ std::tuple<ffi_abi,alien_type*,std::vector<alien_type*>,bool>
     return std::make_tuple(abi, ret, params, is_variadic);
 }
 
-int alien_function_new(lua_State *L) {
+ALIEN_LUA_FUNC int alien_function_new(lua_State *L) {
+    ALIEN_EXCEPTION_BEGIN();
     void* fn = nullptr;
     if (!lua_isinteger(L, 1)) {
         fn = reinterpret_cast<void*>(lua_tointeger(L, 2));
     } else if (lua_islightuserdata(L, 2)) {
         fn = lua_touserdata(L, 2);
     } else {
-        return luaL_error(L, "alien: require a function pointer (integer or lightuserdata)");
+        throw AlienInvalidArgumentException("require a function pointer (integer or lightuserdata)");
     }
 
     auto lib = alien_library__get_misc(L);
@@ -261,6 +278,7 @@ int alien_function_new(lua_State *L) {
     alien_function__make_function(L, lib, fn, oss.rdbuf()->str());
 
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
 alien_Function::alien_Function(alien_Library* lib, void* fn, const string& name):
@@ -296,9 +314,11 @@ int alien_Function::call_from_lua(lua_State *L) {
     unique_ptr<void*[]> args;
     int nargs = lua_gettop(L) - 1;
     if (nargs < this->params.size() || (!this->is_variadic && nargs > this->params.size()))
-        return luaL_error(L, "alien: too %s arguments (function %s), expect %d but get %d",
-                          nargs < this->params.size() ? "few" : "many",
-                          this->name.c_str(), this->params.size(), nargs);
+        throw AlienInvalidArgumentException(
+                "alien: too %s arguments (function %s), expect %ld but get %d",
+                nargs < this->params.size() ? "few" : "many",
+                this->name.c_str(), this->params.size(), nargs);
+
     if (nargs > 0) args = make_unique<void*[]>(nargs);
     vector<std::unique_ptr<alien_value>> values;
     int i = 0;
@@ -348,17 +368,17 @@ int alien_Function::call_from_lua(lua_State *L) {
 
 int alien_Function::hook(lua_State* L, void* jmpto, int objref) {
     if (this->hookhandle != nullptr)
-        return luaL_error(L, "alien: function has been hooked");
+        throw AlienException("function has been hooked");
 
     funchook_t* hook = funchook_create();
     void* fn = this->fn;
     if (funchook_prepare(hook, &fn, jmpto) != FUNCHOOK_ERROR_SUCCESS) {
         funchook_destroy(hook);
-        return luaL_error(L, "alien: prepare hook failed");
+        throw AlienException("prepare hook failed");
     }
     if (funchook_install(hook, 0) != FUNCHOOK_ERROR_SUCCESS) {
         funchook_destroy(hook);
-        return luaL_error(L, "alien: install hook failed");
+        throw AlienException("install hook failed");
     }
 
     int n = alien_function__make_function(L, this->lib, fn, "trampoline#" + this->name);
@@ -377,11 +397,11 @@ int alien_Function::hook(lua_State* L, void* jmpto, int objref) {
 int alien_Function::unhook(lua_State* L) {
     assert(L == this->L);
     if (this->hookhandle == nullptr) {
-        return luaL_error(L, "alien: not hooked");
+        throw AlienException("not hooked");
     }
 
     if (funchook_uninstall(static_cast<funchook_t*>(this->hookhandle), 0) != FUNCHOOK_ERROR_SUCCESS) {
-        return luaL_error(L, "alien: uninstall hook failed");
+        throw AlienException("uninstall hook failed");
     }
 
     funchook_destroy(static_cast<funchook_t*>(this->hookhandle));

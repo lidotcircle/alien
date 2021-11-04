@@ -1,5 +1,6 @@
 #include "alien_value_callback.h"
 #include "alien_function.h"
+#include "alien_exception.h"
 #include <vector>
 #include <string>
 #include <memory>
@@ -11,9 +12,9 @@ using namespace std;
 #define ALIEN_VALUE_CALLBACK_META "alien_value_callback_meta"
 
 
-static int alien_value_callback_gc(lua_State* L);
-static int alien_value_callback_tostring(lua_State* L);
-static int alien_value_callback_addr(lua_State* L);
+ALIEN_LUA_FUNC static int alien_value_callback_gc(lua_State* L);
+ALIEN_LUA_FUNC static int alien_value_callback_tostring(lua_State* L);
+ALIEN_LUA_FUNC static int alien_value_callback_addr(lua_State* L);
 
 int alien_value_callback_init(lua_State* L) {
     luaL_newmetatable(L, ALIEN_VALUE_CALLBACK_META);
@@ -37,15 +38,21 @@ int alien_value_callback_init(lua_State* L) {
     return 0;
 }
 
-int alien_value_callback_new(lua_State* L) {
+ALIEN_LUA_FUNC int alien_value_callback_new(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     if (lua_gettop(L) != 3)
-        return luaL_error(L, "alien_value_callback_new: invalid arguments");
+        throw AlienInvalidArgumentException("callback require function and it's declaration");
 
     lua_pushcfunction(L, alien_value_callback_new__);
     lua_pushvalue(L, 2);
     lua_pushvalue(L, 3);
-    lua_call(L, 2, 1);
+
+    if (lua_pcall(L, 2, 1, 0) != LUA_OK) {
+        const char* error = lua_tostring(L, -1);
+        throw AlienLuaThrow("%s", error);
+    }
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
 static bool alien_iscallback(lua_State* L, int idx) {
@@ -56,27 +63,34 @@ static alien_value_callback* alien_checkcallback(lua_State* L, int idx) {
     return *pvc;
 }
 
-static int alien_value_callback_gc(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_value_callback_gc(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     auto vc = alien_checkcallback(L, 1);
     delete vc;
     return 0;
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_value_callback_tostring(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_value_callback_tostring(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     auto vc = alien_checkcallback(L, 1);
     lua_pushstring(L, "[alien callback]");
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_value_callback_addr(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_value_callback_addr(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     auto vc = alien_checkcallback(L, 1);
     lua_pushinteger(L, reinterpret_cast<ptrdiff_t>(vc->ptr()));
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
-int alien_value_callback_new__(lua_State* L) {
+ALIEN_LUA_FUNC int alien_value_callback_new__(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     if (!lua_isfunction(L, 1) || !lua_istable(L, 2))
-        return luaL_error(L, "alien_value_callback_new: invalid arguments");
+        throw AlienInvalidArgumentException("invalid arguments");
 
     ffi_abi abi = FFI_DEFAULT_ABI;
     alien_type* rettype = nullptr;
@@ -85,12 +99,13 @@ int alien_value_callback_new__(lua_State* L) {
 
     std::tie(abi, rettype, params, variadic) = alien_function__parse_types_table(L, 2);
     if (variadic)
-        return luaL_error(L, "alien: callback desn't support variadic parameters");
+        throw AlienNotImplementedException("callback desn't support variadic parameters");
 
     auto cbtype = alien_type_byname(L, "callback");
     alien_value_callback cb(cbtype, L, 1, abi, rettype, params);
     cb.to_lua(L);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
 alien_value_callback::alien_value_callback(const alien_type* type,
@@ -145,10 +160,10 @@ void* alien_value_callback::funcaddr() const {
 }
 
 void alien_value_callback::assignFrom(const alien_value& val) {
-    throw std::runtime_error("alien: can't change callback");
+    throw AlienException("can't change callback");
 }
 void alien_value_callback::assignFromLua(lua_State* L, size_t idx) {
-    luaL_error(L, "alien: can't change callback");
+    throw AlienException("can't change callback");
 }
 void alien_value_callback::to_lua(lua_State* L) const {
     const alien_value_callback** pvc = (const alien_value_callback**)lua_newuserdata(L, sizeof(alien_value_callback*));
@@ -178,7 +193,10 @@ void alien_value_callback::callback_call(ffi_cif* cif, void *resp, void **args, 
         ap->to_lua(L);
     }
 
-    lua_call(L, vc->params.size(), 1);
+    if (lua_pcall(L, vc->params.size(), 1, 0) != LUA_OK) {
+        const char* error = lua_tostring(L, -1);
+        throw AlienLuaThrow("%s", error);
+    }
 
     if (!vc->ret_type->is_void()) {
         assert(resp != nullptr);

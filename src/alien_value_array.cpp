@@ -1,5 +1,6 @@
 #include "alien_value_array.h"
 #include "alien_type_array.h"
+#include "alien_exception.h"
 #include <string>
 #include <assert.h>
 #include <string.h>
@@ -73,11 +74,11 @@ static int alien_value_array_index(lua_State* L)
     alien_value_array* s = alien_checkarray(L, 1);
     int n = luaL_checkinteger(L, 2);
     if (n >s->length() || n <= 0)
-        return luaL_error(L, "alien: array index out of range");
+        throw AlienOutOfRange("array index out of range");
 
     std::unique_ptr<alien_value> mem(s->get_n(n));
     if (mem == nullptr)
-        return luaL_error(L, "alien: array fatal error");
+        throw AlienException("array fatal error");
 
     mem->to_lua(L);
     return 1;
@@ -87,11 +88,11 @@ static int alien_value_array_newindex(lua_State* L)
     alien_value_array* s = alien_checkarray(L, 1);
     int n = luaL_checkinteger(L, 2);
     if (n >s->length() || n <= 0)
-        return luaL_error(L, "alien: array index out of range");
+        throw AlienOutOfRange("array index out of range");
 
     std::unique_ptr<alien_value> mb(s->get_n(n));
     if (mb == nullptr)
-        return luaL_error(L, "alien: array fatal error");
+        throw AlienOutOfRange("array fatal error");
 
     mb->assignFromLua(L, 3);
     return 0;

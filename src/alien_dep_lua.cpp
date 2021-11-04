@@ -1,4 +1,5 @@
 #include "alien.h"
+#include "alien_exception.h"
 
 
 #if LUA_VERSION_NUM >= 502

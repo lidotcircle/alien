@@ -1,5 +1,6 @@
 #include "alien_value_union.h"
 #include "alien_type_union.h"
+#include "alien_exception.h"
 #include <string>
 #include <string.h>
 #include <assert.h>
@@ -19,10 +20,10 @@ static alien_value_union* alien_checkunion(lua_State* L, int idx)
     return *static_cast<alien_value_union**>(luaL_checkudata(L, idx, ALIEN_VALUE_UNION_META));
 }
 
-static int alien_value_union_gc(lua_State* L);
-static int alien_value_union_tostring(lua_State* L);
-static int alien_value_union_index(lua_State* L);
-static int alien_value_union_newindex(lua_State* L);
+ALIEN_LUA_FUNC static int alien_value_union_gc(lua_State* L);
+ALIEN_LUA_FUNC static int alien_value_union_tostring(lua_State* L);
+ALIEN_LUA_FUNC static int alien_value_union_index(lua_State* L);
+ALIEN_LUA_FUNC static int alien_value_union_newindex(lua_State* L);
 
 int alien_value_union_init(lua_State* L)
 {
@@ -57,41 +58,49 @@ int alien_value_union_new(lua_State* L) {
     return 1;
 }
 
-static int alien_value_union_gc(lua_State* L)
+ALIEN_LUA_FUNC static int alien_value_union_gc(lua_State* L)
 {
+    ALIEN_EXCEPTION_BEGIN();
     alien_value_union* s = alien_checkunion(L, 1);
     delete s;
     return 0;
+    ALIEN_EXCEPTION_END();
 }
-static int alien_value_union_tostring(lua_State* L)
+ALIEN_LUA_FUNC static int alien_value_union_tostring(lua_State* L)
 {
+    ALIEN_EXCEPTION_BEGIN();
     alien_value_union* s = alien_checkunion(L, 1);
     lua_pushfstring(L, "[alien union: %p]", s);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
-static int alien_value_union_index(lua_State* L)
+ALIEN_LUA_FUNC static int alien_value_union_index(lua_State* L)
 {
+    ALIEN_EXCEPTION_BEGIN();
     alien_value_union* s = alien_checkunion(L, 1);
     const char* key = luaL_checkstring(L, 2);
 
     std::unique_ptr<alien_value> mem(s->get_member(key));
     if (mem == nullptr)
-        return luaL_error(L, "union as no member %s", key);
+        throw AlienException("union has no member %s", key);
 
     mem->to_lua(L);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
-static int alien_value_union_newindex(lua_State* L)
+ALIEN_LUA_FUNC static int alien_value_union_newindex(lua_State* L)
 {
+    ALIEN_EXCEPTION_BEGIN();
     alien_value_union* s = alien_checkunion(L, 1);
     const char* key = luaL_checkstring(L, 2);
     std::unique_ptr<alien_value> mb(s->get_member(key));
 
     if (mb == nullptr)
-        return luaL_error(L, "union as no member %s", key);
+        throw AlienException("union has no member %s", key);
 
     mb->assignFromLua(L, 3);
     return 0;
+    ALIEN_EXCEPTION_END();
 }
 
 alien_value_union::alien_value_union(const alien_type* type): alien_value(type)

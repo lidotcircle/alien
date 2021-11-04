@@ -39,9 +39,9 @@ class alien_Library {
 
 int alien_library_init(lua_State* L);
 
-int alien_load(lua_State *L);
-int alien_functionlist(lua_State *L);
-int alien_hasfunction(lua_State *L);
+ALIEN_LUA_FUNC int alien_load(lua_State *L);
+ALIEN_LUA_FUNC int alien_functionlist(lua_State *L);
+ALIEN_LUA_FUNC int alien_hasfunction(lua_State *L);
 
 alien_Library* alien_library__get_default_library(lua_State *L);
 alien_Library* alien_library__get_misc(lua_State *L);

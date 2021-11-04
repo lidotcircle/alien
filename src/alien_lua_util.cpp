@@ -1,12 +1,13 @@
 #include "alien_lua_util.h"
+#include "alien_exception.h"
 
 #define ALIEN_ROTABLE_META "alien_rotable_meta"
 
 
-static int alien_rotable_gc(lua_State* L);
-static int alien_rotable_tostring(lua_State* L);
-static int alien_rotable_index(lua_State* L);
-static int alien_rotable_newindex(lua_State* L);
+ALIEN_LUA_FUNC static int alien_rotable_gc(lua_State* L);
+ALIEN_LUA_FUNC static int alien_rotable_tostring(lua_State* L);
+ALIEN_LUA_FUNC static int alien_rotable_index(lua_State* L);
+ALIEN_LUA_FUNC static int alien_rotable_newindex(lua_State* L);
 
 int alien_rotable_init(lua_State* L) {
     luaL_newmetatable(L, ALIEN_ROTABLE_META);
@@ -27,13 +28,15 @@ int alien_rotable_init(lua_State* L) {
     return 0;
 }
 
-int alien_rotable_new(lua_State* L) {
+ALIEN_LUA_FUNC int alien_rotable_new(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     void* ax = lua_newuserdata(L, sizeof(void*));
     *static_cast<void**>(ax) = nullptr;
     luaL_setmetatable(L, ALIEN_ROTABLE_META);
     lua_newtable(L);
     lua_setuservalue(L, -2);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
 bool alien_isrotable(lua_State* L, int idx) {
@@ -53,13 +56,17 @@ static int alien_rotable_tostring(lua_State* L) {
     lua_pushstring(L, "[rotable]");
     return 1;
 }
-static int alien_rotable_index(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_rotable_index(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_rotable_rawtable(L, 1);
     lua_pushvalue(L, 2);
     lua_gettable(L, -2);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
-static int alien_rotable_newindex(lua_State* L) {
-    return luaL_error(L, "alien: can't modify readonly tabl");
+ALIEN_LUA_FUNC static int alien_rotable_newindex(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
+    throw AlienException("can't modify readonly table");
+    ALIEN_EXCEPTION_END();
 }
 

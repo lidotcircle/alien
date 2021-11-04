@@ -1,5 +1,6 @@
 #include "alien_value_string.h"
 #include "alien_value_buffer.h"
+#include "alien_exception.h"
 #include <string.h>
 #include <assert.h>
 #include <memory>
@@ -52,8 +53,7 @@ alien_value* alien_value_string::from_lua(const alien_type* type, lua_State* L, 
         str.get()[slen] = '\0';
         return new alien_value_string(type, str.get());
     } else {
-        luaL_error(L, "alien: invalid type for string value");
-        return nullptr;
+        throw AlienInvalidValueException("invalid type for string value");
     }
 }
 alien_value* alien_value_string::from_ptr(const alien_type* type, lua_State* L, void* ptr) {
@@ -70,10 +70,8 @@ bool alien_value_string::is_this_value(const alien_type* type, lua_State* L, int
     return lua_isstring(L, idx);
 }
 alien_value_string* alien_value_string::checkvalue(const alien_type* type, lua_State* L, int idx) {
-    if (!lua_isstring(L, idx)) {
-        luaL_error(L, "Expected string");
-        return nullptr;
-    }
+    if (!lua_isstring(L, idx))
+        throw AlienInvalidValueException("expected string");
 
     return new alien_value_string(type, lua_tostring(L, idx));
 }

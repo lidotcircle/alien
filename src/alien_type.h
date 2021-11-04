@@ -60,10 +60,10 @@ class alien_type {
 int alien_types_init(lua_State* L);
 
 /** lua c functions */
-int alien_types_defstruct(lua_State* L);
-int alien_types_defunion(lua_State* L);
-int alien_types_alias(lua_State* L);
-int alien_types_getbyname(lua_State* L);
+ALIEN_LUA_FUNC int alien_types_defstruct(lua_State* L);
+ALIEN_LUA_FUNC int alien_types_defunion(lua_State* L);
+ALIEN_LUA_FUNC int alien_types_alias(lua_State* L);
+ALIEN_LUA_FUNC int alien_types_getbyname(lua_State* L);
 
 alien_type* alien_checktype(lua_State* L, int idx);
 alien_type* alien_type_byname(lua_State* L, const char* tname);

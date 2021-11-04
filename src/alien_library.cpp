@@ -1,5 +1,6 @@
 #include "alien_library.h"
 #include "alien_function.h"
+#include "alien_exception.h"
 #include "utils.h"
 #include <assert.h>
 #include <string>
@@ -162,10 +163,10 @@ static alien_Library* alien_checklibrary(lua_State*L, int idx) {
     return *static_cast<alien_Library **>(luaL_checkudata(L, idx, ALIEN_LIBRARY_META));
 }
 
-static int alien_library_gc(lua_State *L);
-static int alien_library_tostring(lua_State *L);
-static int alien_library_get(lua_State *L);
-static int alien_library_pairs(lua_State *L);
+ALIEN_LUA_FUNC static int alien_library_gc(lua_State *L);
+ALIEN_LUA_FUNC static int alien_library_tostring(lua_State *L);
+ALIEN_LUA_FUNC static int alien_library_get(lua_State *L);
+ALIEN_LUA_FUNC static int alien_library_pairs(lua_State *L);
 
 int alien_library_init(lua_State* L) {
     luaL_newmetatable(L, ALIEN_LIBRARY_META);
@@ -211,7 +212,8 @@ alien_Library* alien_library__get_misc(lua_State *L) {
     return alien_library__get_default_library(L);
 }
 
-int alien_load(lua_State *L) {
+ALIEN_LUA_FUNC int alien_load(lua_State *L) {
+    ALIEN_EXCEPTION_BEGIN();
     const char *libname = luaL_checkstring(L, lua_gettop(L));
     void* lib = alien_openlib(L, libname);
     if(!lib)
@@ -219,7 +221,8 @@ int alien_load(lua_State *L) {
     alien_Library* al = new alien_Library(L, string(libname), lib);
 
     alien_Library** pal = (alien_Library **)lua_newuserdata(L, sizeof(alien_Library*));
-    if(!pal) return luaL_error(L, "alien: out of memory");
+    if(!pal)
+        throw AlienException("out of memory");
     *pal = al;
 
     lua_newtable(L);
@@ -228,15 +231,19 @@ int alien_load(lua_State *L) {
     luaL_getmetatable(L, ALIEN_LIBRARY_META);
     lua_setmetatable(L, -2);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_library_gc(lua_State *L) {
+ALIEN_LUA_FUNC static int alien_library_gc(lua_State *L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_Library *al = alien_checklibrary(L, 1);
     delete al;
     return 0;
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_library_get(lua_State *L) {
+ALIEN_LUA_FUNC static int alien_library_get(lua_State *L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_Library *al = alien_checklibrary(L, 1);
     const char *funcname = luaL_checkstring(L, 2);
 
@@ -255,15 +262,19 @@ static int alien_library_get(lua_State *L) {
     lua_pushvalue(L, -2);
     lua_settable(L, -4);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_library_tostring(lua_State *L) {
+ALIEN_LUA_FUNC static int alien_library_tostring(lua_State *L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_Library *al = alien_checklibrary(L, 1);
     lua_pushfstring(L, "alien library %s", al->libname().c_str());
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_library_next(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_library_next(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_Library *al = alien_checklibrary(L, 1);
     const char* key = nullptr;
     if (lua_gettop(L) > 1 && !lua_isnil(L, 2))
@@ -275,8 +286,7 @@ static int alien_library_next(lua_State* L) {
         iter = flist.find(key);
 
         if (iter == flist.end())
-            return luaL_error(L, "alien: bad key '%s' for library %s",
-                                 key, al->tostring().c_str());
+            throw AlienException("bad key '%s' for library %s", key, al->tostring().c_str());
     }
 
     if (iter == flist.end())
@@ -289,16 +299,21 @@ static int alien_library_next(lua_State* L) {
         lua_pushcfunction(L, alien_library_get);
         lua_pushvalue(L, 1);
         lua_pushvalue(L, -3);
-        lua_call(L, 2, 1);
+        if (lua_pcall(L, 2, 1, 0) != LUA_OK) {
+            const char* error = lua_tostring(L, -1);
+            throw AlienLuaThrow("%s", error);
+        }
     } else {
         lua_pushnil(L);
         lua_pushnil(L);
     }
 
     return 2;
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_library_pairs(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_library_pairs(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_Library *al = alien_checklibrary(L, 1);
     const set<string>& flist = al->function_list();
 
@@ -306,13 +321,16 @@ static int alien_library_pairs(lua_State* L) {
     lua_pushvalue(L, -2);
     lua_pushnil(L);
     return 3;
+    ALIEN_EXCEPTION_END();
 }
 
-int alien_functionlist(lua_State* L) {
+ALIEN_LUA_FUNC int alien_functionlist(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     int n = lua_gettop(L);
     if (n != 1)
-        return luaL_error(L, "alien: too %s arguments[ functionlist(alien_library) ]", 
-                          n > 1 ? "many" : "few");
+        throw AlienInvalidArgumentException(
+                "alien: too %s arguments[ functionlist(alien_library) ]", 
+                n > 1 ? "many" : "few");
 
     alien_Library* al = alien_checklibrary(L, 1);
 
@@ -326,13 +344,16 @@ int alien_functionlist(lua_State* L) {
     }
 
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
-int alien_hasfunction(lua_State* L) {
+ALIEN_LUA_FUNC int alien_hasfunction(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     size_t nargs = lua_gettop(L);
     if (nargs != 2)
-        return luaL_error(L, "alien: too %s arguments (function hasfunction)",
-                          nargs < 2 ? "few" : "many");
+        throw AlienInvalidArgumentException(
+                "alien: too %s arguments (function hasfunction)",
+                nargs < 2 ? "few" : "many");
 
     alien_Library* al = alien_checklibrary(L, 1);
     const char* funcname = luaL_checkstring(L, 2);
@@ -341,5 +362,6 @@ int alien_hasfunction(lua_State* L) {
     lua_pushboolean(L, ans);
 
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 

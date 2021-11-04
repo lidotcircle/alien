@@ -142,7 +142,7 @@ alien_type* alien_type_byname(lua_State* L, const char* name)
 
 alien_type* alien_reftype(lua_State* L, alien_type* type) {
     if (type->is_ref())
-        throw std::runtime_error("alien: type is already a reference");
+        throw AlienException("type is already a reference");
 
     return nullptr;
 }
@@ -157,7 +157,7 @@ static int alien_types_register_basic(lua_State* L, const char* tname, ffi_type*
     lua_pushvalue(L, -2);
     lua_gettable(L, -2);
     if (!lua_isnil(L, -1))
-        return luaL_error(L, "alien: can't define type '%s' twice", tname);
+        throw AlienException("can't define type '%s' twice", tname);
     lua_pop(L, 1);
     lua_pushvalue(L, -2);
 
@@ -171,9 +171,9 @@ static int alien_types_register_basic(lua_State* L, const char* tname, ffi_type*
     return 0;
 }
 
-static int alien_types_gc(lua_State* L);
-static int alien_types_tostring(lua_State* L);
-static int alien_types_index(lua_State* L);
+ALIEN_LUA_FUNC static int alien_types_gc(lua_State* L);
+ALIEN_LUA_FUNC static int alien_types_tostring(lua_State* L);
+ALIEN_LUA_FUNC static int alien_types_index(lua_State* L);
 
 int alien_types_init(lua_State* L) {
     luaL_newmetatable(L, ALIEN_TYPE_META);
@@ -206,8 +206,14 @@ int alien_types_init(lua_State* L) {
         lua_pushstring(L, #_s); \
         lua_pushcfunction(L, alien_types_getbyname); \
         lua_pushstring(L, #_t); \
-        lua_call(L, 1, 1); \
-        lua_call(L, 2, 0);
+        if (lua_pcall(L, 1, 1, 0) != LUA_OK) { \
+            const char* error = lua_tostring(L, -1); \
+            throw AlienLuaThrow("%s", error); \
+        } \
+        if (lua_pcall(L, 2, 0, 0) != LUA_OK) { \
+            const char* error = lua_tostring(L, -1); \
+            throw AlienLuaThrow("%s", error); \
+        }
     type_alias_map
 #undef MENTRY
 
@@ -233,12 +239,12 @@ int alien_types_init(lua_State* L) {
     return 0;
 }
 
-static int alien_types_new(lua_State* L);
-static int alien_types_value_is(lua_State* L);
-static int alien_types_sizeof(lua_State* L);
-static int alien_types_box(lua_State* L);
-static int alien_types_ptr(lua_State* L);
-static int alien_types_ref(lua_State* L);
+ALIEN_LUA_FUNC static int alien_types_new(lua_State* L);
+ALIEN_LUA_FUNC static int alien_types_value_is(lua_State* L);
+ALIEN_LUA_FUNC static int alien_types_sizeof(lua_State* L);
+ALIEN_LUA_FUNC static int alien_types_box(lua_State* L);
+ALIEN_LUA_FUNC static int alien_types_ptr(lua_State* L);
+ALIEN_LUA_FUNC static int alien_types_ref(lua_State* L);
 
 const map<string, lua_CFunction> alien_types_methods = {
     {"new",      alien_types_new},
@@ -250,7 +256,8 @@ const map<string, lua_CFunction> alien_types_properties = {
     {"ptr", alien_types_ptr},
     {"ref", alien_types_ref},
 };
-static int alien_types_index(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_types_index(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_type* type = alien_checktype(L, 1);
     const string key(luaL_checkstring(L, 2));
 
@@ -260,48 +267,63 @@ static int alien_types_index(lua_State* L) {
     } else if (alien_types_properties.find(key) != alien_types_properties.end()) {
         lua_pushcfunction(L, alien_types_properties.at(key));
         lua_pushvalue(L, 1);
-        lua_call(L, 1, 1);
+        if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
+            const char* error = lua_tostring(L, -1);
+            throw AlienLuaThrow("%s", error);
+        }
         return 1;
     } else {
-        return luaL_error(L, "alien: unknown type property '%s'", key.c_str());
+        throw AlienException("unknown type property '%s'", key.c_str());
     }
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_types_new(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_types_new(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_type* type = alien_checktype(L, 1);
 
     return alien_operator_method_new(L, type);
+    ALIEN_EXCEPTION_END();
 }
-static int alien_types_value_is(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_types_value_is(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_type* type = alien_checktype(L, 1);
     if (lua_gettop(L) != 2)
-        throw std::runtime_error("alien: value_is() takes exactly 2 arguments");
+        throw AlienInvalidArgumentException("value_is() takes exactly 2 arguments");
     bool isthis = type->is_this_type(L, 2);
     lua_pushboolean(L, isthis);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
-static int alien_types_sizeof(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_types_sizeof(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_type* type = alien_checktype(L, 1);
     lua_pushnumber(L, type->__sizeof());
     return 1;
+    ALIEN_EXCEPTION_END();
 }
-static int alien_types_gc(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_types_gc(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_type* type = alien_checktype(L, 1);
     delete type;
     return 0;
+    ALIEN_EXCEPTION_END();
 }
-static int alien_types_box(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_types_box(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_type_basic* type = dynamic_cast<alien_type_basic*>(alien_checktype(L, 1));
     if (!type || !type->is_basic())
-        return luaL_error(L, "alien: cannot box non-basic type");
+        throw AlienInvalidArgumentException("cannot box non-basic type");
     if (lua_gettop(L) != 2)
-        return luaL_error(L, "alien: box() takes exactly 2 arguments");
+        throw AlienInvalidArgumentException("box() takes exactly 2 arguments");
 
     int n = type->box(L, 2);
     assert(n == 1);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
-static int alien_types_tostring(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_types_tostring(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_type* type = alien_checktype(L, 1);
 
     if (type->is_struct())
@@ -311,6 +333,7 @@ static int alien_types_tostring(lua_State* L) {
     else
         lua_pushfstring(L, "[%s]", type->__typename().c_str());
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
 static pair<alien_type*,string> ensure_type (lua_State* L, const string& type_n);
@@ -496,7 +519,7 @@ static int alien_types_ref(lua_State* L) {
     alien_type* type = alien_checktype(L, 1);
     auto nm = ensure_refto(L, type->__typename());
     if (nm.first == nullptr)
-        return luaL_error(L, nm.second.c_str());
+        throw AlienException("%s", nm.second.c_str());
 
     alien_push_type_table(L);
     lua_getfield(L, -1, (type->__typename() + '&').c_str());
@@ -507,7 +530,7 @@ static int alien_types_ptr(lua_State* L) {
     alien_type* type = alien_checktype(L, 1);
     auto nm = ensure_ptrto(L, type->__typename());
     if (nm.first == nullptr)
-        return luaL_error(L, nm.second.c_str());
+        throw AlienException("%s", nm.second.c_str());
 
     alien_push_type_table(L);
     lua_getfield(L, -1, (type->__typename() + '*').c_str());
@@ -541,19 +564,20 @@ static bool validate_typename(const string& type_name)
  *     { namen, membern },
  * }) => new_struct_type;
  */
-int alien_types_defstruct(lua_State* L) {
+ALIEN_LUA_FUNC int alien_types_defstruct(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     if (lua_gettop(L) != 2 || !lua_isstring(L, 1) || !lua_istable(L, 2))
-        return luaL_error(L, "alien: bad argument with 'defstruct( structname, definition )'");
+        throw AlienInvalidArgumentException("bad argument with 'defstruct( structname, definition )'");
 
     const char* structname = luaL_checkstring(L, 1);
     if (!validate_typename(structname))
-        return luaL_error(L, "alien: bad struct name '%s'", structname);
+        throw AlienInvalidArgumentException("bad struct name '%s'", structname);
 
     alien_push_type_table(L);
     lua_pushvalue(L, 1);
     lua_gettable(L, -2);
     if (!lua_isnil(L, -1))
-        return luaL_error(L, "alien: can't define type '%s' twice", structname);
+         throw AlienInvalidArgumentException("can't define type '%s' twice", structname);
     lua_pop(L, 1);
 
     ffi_abi abi = FFI_DEFAULT_ABI;
@@ -568,7 +592,7 @@ int alien_types_defstruct(lua_State* L) {
         lua_rawgeti(L, 2, i);
 
         if (!lua_istable(L, -1) || luaL_len(L, -1) != 2)
-            return luaL_error(L, "alien: defstruct bad member definition");
+            throw AlienInvalidValueException("defstruct bad member definition");
 
         lua_rawgeti(L, -1, 1);
         lua_rawgeti(L, -2, 2);
@@ -590,22 +614,24 @@ int alien_types_defstruct(lua_State* L) {
     lua_pushvalue(L, -3);
     lua_settable(L, -3);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
 /** similar with struct, see above */
-int alien_types_defunion(lua_State* L) {
+ALIEN_LUA_FUNC int alien_types_defunion(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     if (lua_gettop(L) != 2 || !lua_isstring(L, 1) || !lua_istable(L, 2))
-        return luaL_error(L, "alien: bad argument with 'defunion( unionname, definition )'");
+        throw AlienInvalidArgumentException("bad argument with 'defunion( unionname, definition )'");
 
     const char* unionname = luaL_checkstring(L, 1);
     if (!validate_typename(unionname))
-        return luaL_error(L, "alien: bad struct name '%s'", unionname);
+        throw AlienInvalidArgumentException("bad struct name '%s'", unionname);
 
     alien_push_type_table(L);
     lua_pushvalue(L, 1);
     lua_gettable(L, -2);
     if (!lua_isnil(L, -1))
-        return luaL_error(L, "alien: can't define type '%s' twice", unionname);
+        throw AlienInvalidArgumentException("can't define type '%s' twice", unionname);
     lua_pop(L, 1);
 
     ffi_abi abi = FFI_DEFAULT_ABI;
@@ -620,7 +646,7 @@ int alien_types_defunion(lua_State* L) {
         lua_rawgeti(L, 2, i);
 
         if (!lua_istable(L, -1) || luaL_len(L, -1) != 2)
-            return luaL_error(L, "alien: defunion bad member definition");
+            throw AlienInvalidValueException("defunion bad member definition");
 
         lua_rawgeti(L, -1, 1);
         lua_rawgeti(L, -2, 2);
@@ -642,43 +668,48 @@ int alien_types_defunion(lua_State* L) {
     lua_pushvalue(L, -3);
     lua_settable(L, -3);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
 /** alias(newtypename, type) */
-int alien_types_alias(lua_State* L) {
+ALIEN_LUA_FUNC int alien_types_alias(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     const char* nname = luaL_checkstring(L, 1);
     if (!alien_istype(L, 2))
-        return luaL_error(L, "alien: bad argument with 'alias(newtypename, type)'");
+        throw AlienInvalidArgumentException("bad argument with 'alias(newtypename, type)'");
 
     if (!validate_typename(nname))
-        return luaL_error(L, "alien: bad type name '%s'", nname);
+        throw AlienInvalidArgumentException("bad type name '%s'", nname);
 
     alien_push_raw_type_table(L);
     lua_pushvalue(L, 1);
     lua_gettable(L, -2);
 
     if (!lua_isnil(L, -1))
-        return luaL_error(L, "alien: can't set alias '%s', type '%s' has existed", nname, nname);
+        throw AlienInvalidArgumentException("can't set alias '%s', type '%s' has existed", nname, nname);
     lua_pop(L, 1);
 
     lua_pushvalue(L, 1);
     lua_pushvalue(L, 2);
     lua_settable(L, -3);
     return 0;
+    ALIEN_EXCEPTION_END();
 }
 
 /** atype(typename) */
-int alien_types_getbyname(lua_State* L) {
+ALIEN_LUA_FUNC int alien_types_getbyname(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     const char* nname = luaL_checkstring(L, 1);
     auto enret = ensure_type(L, nname);
 
     if (enret.first == nullptr)
-        return luaL_error(L, enret.second.c_str());
+        throw AlienException("%s", enret.second.c_str());
 
     alien_push_type_table(L);
     lua_pushvalue(L, 1);
     lua_gettable(L, -2);
     assert(!lua_isnil(L, -1));
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 

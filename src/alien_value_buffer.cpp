@@ -1,4 +1,5 @@
 #include "alien_value_buffer.h"
+#include "alien_exception.h"
 #include <string.h>
 #include <assert.h>
 #include <stdexcept>
@@ -33,10 +34,10 @@ static bool in_range(size_t len, size_t s, size_t idx, size_t off) {
 
 #define MENTRY(n, t) t alien_value_buffer::get_##n(lua_State* L, size_t nn, size_t off) const { \
     if (nn == 0) \
-        return luaL_error(L, "alien: access buffer out of range (type = %s), start from 1", #t); \
+        throw AlienOutOfRange("access buffer out of range (type = %s), start from 1", #t); \
     nn--; \
     if (!in_range(this->buf_len, sizeof(t), nn, off)) \
-        return luaL_error(L, "alien: access buffer out of range (type = %s)", #t); \
+        throw AlienOutOfRange("access buffer out of range (type = %s)", #t); \
     const void* ptr = *static_cast<char* const*>(this->ptr()) + off;\
     return static_cast<const t*>(ptr)[nn]; \
 }
@@ -45,12 +46,12 @@ buffer_access_type
 
 #define MENTRY(n, t) void alien_value_buffer::set_##n(lua_State* L, size_t nn, size_t off, t val) { \
     if (nn == 0) { \
-        luaL_error(L, "alien: access buffer out of range (type = %s), start from 1", #t); \
+        throw AlienOutOfRange("access buffer out of range (type = %s), start from 1", #t); \
         return; \
     } \
     nn--; \
     if (!in_range(this->buf_len, sizeof(t), nn, off)) {\
-        luaL_error(L, "alien: access buffer out of range (type = %s)", #t); \
+        throw AlienOutOfRange("access buffer out of range (type = %s)", #t); \
         return; \
     } \
     void* ptr = *static_cast<char**>(this->ptr()) + off;\
@@ -61,11 +62,11 @@ buffer_access_type
 
 void alien_value_buffer::assignFrom(const alien_value& val) {
     if (val.alientype() != this->alientype())
-        throw std::runtime_error("alien: assignment between incompatible type");
+        throw AlienInvalidValueException("assignment between incompatible type");
 
     const alien_value_buffer* valb = dynamic_cast<const alien_value_buffer*>(&val);
     if (valb == nullptr)
-        throw std::runtime_error("alien: nope nope buffer error");
+        throw AlienException("nope nope buffer error");
 
     this->buf_len = valb->buf_len;
     this->buf = std::shared_ptr<char>(new char[valb->buf_len], std::default_delete<char[]>());
@@ -96,9 +97,9 @@ static alien_value_buffer* alien_checkbuffer(lua_State* L, int idx) {
 }
 
 
-static int alien_buffer_gc(lua_State* L);
-static int alien_buffer_tostring(lua_State* L);
-static int alien_buffer_len(lua_State* L);
+ALIEN_LUA_FUNC static int alien_buffer_gc(lua_State* L);
+ALIEN_LUA_FUNC static int alien_buffer_tostring(lua_State* L);
+ALIEN_LUA_FUNC static int alien_buffer_len(lua_State* L);
 #define MENTRY(n, t) static int alien_buffer_get_##n(lua_State* L); \
                      static int alien_buffer_set_##n(lua_State* L);
 buffer_access_type
@@ -150,7 +151,7 @@ int alien_value_buffer_new(lua_State* L) {
     if (lua_isinteger(L, 2)) {
         size_t len = lua_tointeger(L, 2);
         if (len < 0)
-            return luaL_error(L, "alien: buffer length must be positive");
+            throw AlienInvalidArgumentException("buffer length must be positive");
         std::unique_ptr<alien_value> val(new alien_value_buffer(type, len));
         val->to_lua(L);
         return 1;
@@ -162,27 +163,34 @@ int alien_value_buffer_new(lua_State* L) {
         val->to_lua(L);
         return 1;
     } else {
-        return luaL_error(L, "alien: invalid buffer constructor");
+        throw AlienInvalidArgumentException("invalid buffer constructor parameters");
     }
 }
 
-static int alien_buffer_gc(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_buffer_gc(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_value_buffer* vb = alien_checkbuffer(L, 1);
     delete vb;
     return 0;
+    ALIEN_EXCEPTION_END();
 }
-static int alien_buffer_tostring(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_buffer_tostring(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_value_buffer* vb = alien_checkbuffer(L, 1);
     lua_pushfstring(L, "[alien buffer #%d", vb->buflen());
     return 1;
+    ALIEN_EXCEPTION_END();
 }
-static int alien_buffer_len(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_buffer_len(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_value_buffer* vb = alien_checkbuffer(L, 1);
     lua_pushnumber(L, vb->buflen());
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 #define MENTRY(n, t) \
-    static int alien_buffer_get_##n(lua_State* L) { \
+    ALIEN_LUA_FUNC static int alien_buffer_get_##n(lua_State* L) { \
+        ALIEN_EXCEPTION_BEGIN(); \
         alien_value_buffer* vb = alien_checkbuffer(L, 1); \
         size_t index = luaL_checkinteger(L, 2); \
         size_t off = 0; \
@@ -191,8 +199,10 @@ static int alien_buffer_len(lua_State* L) {
         t val = vb->get_##n(L, index, off); \
         lua_pushnumber(L, val); \
         return 1; \
+        ALIEN_EXCEPTION_END(); \
     } \
-    static int alien_buffer_set_##n(lua_State* L) { \
+    ALIEN_LUA_FUNC static int alien_buffer_set_##n(lua_State* L) { \
+        ALIEN_EXCEPTION_BEGIN(); \
         alien_value_buffer* vb = alien_checkbuffer(L, 1); \
         size_t index = luaL_checkinteger(L, 2); \
         t val = luaL_checknumber(L, 3); \
@@ -201,6 +211,7 @@ static int alien_buffer_len(lua_State* L) {
             off = luaL_checkinteger(L, 4); \
         vb->set_##n(L, index, off, val); \
         return 0; \
+        ALIEN_EXCEPTION_END(); \
     }
 buffer_access_type
 #undef MENTRY

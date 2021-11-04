@@ -1,4 +1,5 @@
 #include "alien_value.h"
+#include "alien_exception.h"
 #include "alien_value_basic.h"
 #include "alien_value_buffer.h"
 #include "alien_value_callback.h"
@@ -35,7 +36,7 @@ int alien_operator_method_new(lua_State* L, alien_type* type) {
     } else if (type->is_array()) {
         return alien_value_array_new(L);
     } else {
-        return luaL_error(L, "alien: unsupported type");
+        throw AlienBadTypeException("new() method doesn't support type '%s'", type->__typename().c_str());
     }
 
     return 1;
@@ -117,9 +118,10 @@ int alien_value_init(lua_State* L) {
     return 0;
 }
 
-int alien_value_copy(lua_State* L) {
+ALIEN_LUA_FUNC int alien_value_copy(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     if (lua_gettop(L) != 1)
-        return luaL_error(L, "alien: copy() require exactly 1 argument");
+        throw AlienInvalidArgumentException("copy() require exactly 1 argument");
 
     auto type = lua_type(L, 1);
     switch (type) {
@@ -132,9 +134,9 @@ int alien_value_copy(lua_State* L) {
         case LUA_TLIGHTUSERDATA:
             return 1;
         case LUA_TTHREAD:
-            return luaL_error(L, "alien: can't copy thread");
+            throw AlienInvalidArgumentException("copy() doesn't support thread");
         case LUA_TTABLE:
-            return luaL_error(L, "alien: can't copy table");
+            throw AlienInvalidArgumentException("copy() doesn't support table");
         case LUA_TUSERDATA:
             break;
     }
@@ -153,11 +155,12 @@ int alien_value_copy(lua_State* L) {
         val = alien_value_union::checkvalue(nullptr, L, 1);
 
     if (val == nullptr)
-        return luaL_error(L, "alien: can't copy alien value");
+        throw AlienInvalidArgumentException("copy() failed on a unsupport value");
 
     std::unique_ptr<alien_value> vv(val->copy());
     vv->to_lua(L);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
 alien_value* alien_generic_from_lua(lua_State* L, int idx) {
@@ -177,17 +180,17 @@ alien_value* alien_generic_from_lua(lua_State* L, int idx) {
         case LUA_TLIGHTUSERDATA:
             return rawptr_t->from_lua(L, -1);
         case LUA_TNONE:
-            luaL_error(L, "alien: can't checkvalue with none type"); break;
+            throw AlienInvalidValueException("can't get alien value from none lua value");
         case LUA_TBOOLEAN:
-            luaL_error(L, "alien: can't checkvalue with boolean type"); break;
+            throw AlienInvalidValueException("can't get alien value from boolean lua value");
         case LUA_TNUMBER:
-            luaL_error(L, "alien: can't checkvalue with number type"); break;
+            throw AlienInvalidValueException("can't get alien value from lua number value");
         case LUA_TFUNCTION:
-            luaL_error(L, "alien: can't checkvalue with function type"); break;
+            throw AlienInvalidValueException("can't get alien value from lua function value");
         case LUA_TTHREAD:
-            luaL_error(L, "alien: can't checkvalue with thread type"); break;
+            throw AlienInvalidValueException("can't get alien value from lua thread value");
         case LUA_TTABLE:
-            luaL_error(L, "alien: can't checkvalue with table type"); break;
+            throw AlienInvalidValueException("can't get alien value from lua table value");
         case LUA_TUSERDATA:
             break;
     }
@@ -219,10 +222,9 @@ alien_value* alien_generic_from_lua(lua_State* L, int idx) {
                 alien_value_basic::checkvalue(nullptr, L, idx),
                 std::default_delete<alien_value>());
 
-    if (val == nullptr) {
-        luaL_error(L, "alien: can't get alien value");
-        return nullptr;
-    }
+    if (val == nullptr)
+        throw AlienInvalidValueException("can't get alien value");
+
     return val->copy();
 }
 

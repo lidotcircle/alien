@@ -37,6 +37,7 @@ target_sources(alien PRIVATE
     src/alien.cpp
     src/alien_dep_lua.cpp
     src/alien_lua_util.cpp
+    src/alien_lua_check.cpp
     src/alien_function.cpp
     src/alien_library.cpp
     src/alien_exception.cpp

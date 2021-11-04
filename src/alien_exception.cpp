@@ -1,10 +1,9 @@
 #include "alien_exception.h"
 #include <string>
+#include <stdio.h>
 using namespace std;
 
-AlienException::AlienException(const string& msg) : msg("alien: " + msg) {}
 
 const char* AlienException::what() const throw() {
     return msg.c_str();
 }
-

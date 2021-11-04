@@ -41,5 +41,7 @@
 
 #include "alien_dep_lua.h"
 
+#define ALIEN_LUA_FUNC
+
 int alien_push_alien(lua_State* L);
 

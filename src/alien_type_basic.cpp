@@ -16,7 +16,7 @@ ffi_type* alien_type_basic::ffitype() { return this->pffi_type; }
 int alien_type_basic::box(lua_State* L, int idx) const {
     std::unique_ptr<alien_value_basic> v(dynamic_cast<alien_value_basic*>(this->from_lua(L, idx)));
     if (v == nullptr)
-        throw AlienException("can't get a basic value");
+        throw AlienInvalidValueException("can't get a basic value");
 
     v->just_box(L);
     return 1;

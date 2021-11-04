@@ -2,6 +2,7 @@
 #include "alien_type_pointer.h"
 #include "alien_value_struct.h"
 #include "alien_value_union.h"
+#include "alien_exception.h"
 #include <stdexcept>
 #include <assert.h>
 using namespace std;
@@ -15,12 +16,12 @@ static alien_value_pointer* alien_checkpointer(lua_State* L, int idx) {
     return *static_cast<alien_value_pointer**>(luaL_checkudata(L, idx, ALIEN_VALUE_POINTER_META));
 }
 
-static int alien_value_pointer_gc(lua_State* L);
-static int alien_value_pointer_tostring(lua_State* L);
-static int alien_value_pointer_get_member(lua_State* L);
-static int alien_value_pointer_set_member(lua_State* L);
-static int alien_value_pointer_deref(lua_State* L);
-static int alien_value_pointer_raw(lua_State* L);
+ALIEN_LUA_FUNC static int alien_value_pointer_gc(lua_State* L);
+ALIEN_LUA_FUNC static int alien_value_pointer_tostring(lua_State* L);
+ALIEN_LUA_FUNC static int alien_value_pointer_get_member(lua_State* L);
+ALIEN_LUA_FUNC static int alien_value_pointer_set_member(lua_State* L);
+ALIEN_LUA_FUNC static int alien_value_pointer_deref(lua_State* L);
+ALIEN_LUA_FUNC static int alien_value_pointer_raw(lua_State* L);
 
 int alien_value_pointer_init(lua_State* L) {
     luaL_newmetatable(L, ALIEN_VALUE_POINTER_META);
@@ -61,44 +62,56 @@ int alien_value_pointer_new(lua_State* L) {
     return 1;
 }
 
-static int alien_value_pointer_gc(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_value_pointer_gc(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_value_pointer* pointer = alien_checkpointer(L, 1);
     delete pointer;
     return 0;
+    ALIEN_EXCEPTION_END();
 }
-static int alien_value_pointer_tostring(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_value_pointer_tostring(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_value_pointer* pointer = alien_checkpointer(L, 1);
     lua_pushfstring(L, "alien pointer 0x%x", pointer->ptr());
     return 1;
+    ALIEN_EXCEPTION_END();
 }
-static int alien_value_pointer_get_member(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_value_pointer_get_member(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_value_pointer* pointer = alien_checkpointer(L, 1);
     const char* name = luaL_checkstring(L, 2);
     std::unique_ptr<alien_value> mem(pointer->access_member(L, name));
     if (mem == nullptr)
-        return luaL_error(L, "alien: get member named '%s' failed", name);
+        throw AlienException("get member named '%s' failed", name);
     mem->to_lua(L);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
-static int alien_value_pointer_set_member(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_value_pointer_set_member(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_value_pointer* pointer = alien_checkpointer(L, 1);
     const char* name = luaL_checkstring(L, 2);
     std::unique_ptr<alien_value> member(pointer->access_member(L, name));
     member->assignFromLua(L, 3);
     return 0;
+    ALIEN_EXCEPTION_END();
 }
-static int alien_value_pointer_deref(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_value_pointer_deref(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_value_pointer* pointer = alien_checkpointer(L, 1);
     std::unique_ptr<alien_value> val(pointer->deref());
     if (val == nullptr)
-        return luaL_error(L, "alien: deref failed");
+        throw AlienException("deref failed");
     val->to_lua(L);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
-static int alien_value_pointer_raw(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_value_pointer_raw(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     alien_value_pointer* pointer = alien_checkpointer(L, 1);
     lua_pushlightuserdata(L, pointer->ptr());
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
 alien_value_pointer::alien_value_pointer(const alien_type* type): alien_value(type), aval(nullptr)
@@ -145,11 +158,11 @@ alien_value* alien_value_pointer::access_member(lua_State* L, const string& m) c
     if (this->ptr_type->is_struct()) {
         alien_value_struct* sval = dynamic_cast<alien_value_struct*>(this->aval);
         if (sval == nullptr)
-            throw std::runtime_error("alien: bad value of struct type");
+            throw AlienFatalError("bad value of struct type");
         auto ans = sval->get_member(m);
 
         if (ans == nullptr) {
-            luaL_error(L, "alien: access struct member with pointer failed");
+            throw AlienException("access struct member with pointer failed");
             return nullptr;
         }
 
@@ -157,17 +170,17 @@ alien_value* alien_value_pointer::access_member(lua_State* L, const string& m) c
     } else if (this->ptr_type->is_union()) {
         alien_value_union* uval = dynamic_cast<alien_value_union*>(this->aval);
         if (uval == nullptr)
-            throw std::runtime_error("alien: bad value of union type");
+            throw AlienFatalError("bad value of union type");
         auto ans = uval->get_member(m);
 
         if (ans == nullptr) {
-            luaL_error(L, "alien: access union member with pointer failed");
+            throw AlienException("access union member with pointer failed");
             return nullptr;
         }
 
         return ans;
     } else {
-        luaL_error(L, "alien: access member of non struct or union object");
+        throw AlienException("access member of non struct or union object");
         return nullptr;
     }
 }
@@ -210,7 +223,7 @@ alien_value* alien_value_pointer::from_lua(const alien_type* type, lua_State* L,
         alien_value_pointer* ptr = alien_checkpointer(L, idx);
         return ptr->copy();
     } else {
-        luaL_error(L, "alien: bad argument to alien_value_pointer");
+        throw AlienInvalidValueException("bad value for pointer");
         return nullptr;
     }
 }

@@ -33,7 +33,7 @@ void alien_value_basic::to_lua(lua_State* L) const {
             case 8:
                 lua_pushnumber(L, *static_cast<const int64_t*>(this->ptr())); break;
             default:
-                luaL_error(L, "alien: bad signed integer type");
+                throw AlienFatalError("bad signed integer type");
         }
     } else if (this->type->is_integer()) {
         switch (this->__sizeof()) {
@@ -46,7 +46,7 @@ void alien_value_basic::to_lua(lua_State* L) const {
             case 8:
                 lua_pushnumber(L, *static_cast<const uint64_t*>(this->ptr())); break;
             default:
-                luaL_error(L, "alien: bad integer type");
+                throw AlienFatalError("bad integer type");
         }
     } else if (this->type->is_float()) {
         lua_pushnumber(L, *static_cast<const float*>(this->ptr()));
@@ -57,7 +57,7 @@ void alien_value_basic::to_lua(lua_State* L) const {
         lua_pushnumber(L, reinterpret_cast<size_t>(ptr));
     } else if (this->type->is_void()) {
     } else {
-        luaL_error(L, "alien: bad basic type");
+        throw AlienFatalError("bad basic type");
     }
 }
 
@@ -109,7 +109,7 @@ alien_value* alien_value_basic::from_lua(const alien_type* type, lua_State* L, i
             case 8:
                 *static_cast<int64_t*>(ans->ptr()) = ival; break;
             default:
-                throw AlienException("unexpected signed integer size");
+                throw AlienFatalError("unexpected signed integer size");
         }
     } else if (type->is_integer()) {
         switch (type->__sizeof()) {
@@ -122,7 +122,7 @@ alien_value* alien_value_basic::from_lua(const alien_type* type, lua_State* L, i
             case 8:
                 *static_cast<uint64_t*>(ans->ptr()) = ival; break;
             default:
-                throw AlienException("unexpected integer size");
+                throw AlienFatalError("unexpected integer size");
         }
     } else if (type->is_float()) {
         *static_cast<float*>(ans->ptr()) = fval;
@@ -131,7 +131,7 @@ alien_value* alien_value_basic::from_lua(const alien_type* type, lua_State* L, i
     } else if (type->is_rawpointer()) {
         *static_cast<void**>(ans->ptr()) = reinterpret_cast<void*>(ival);
     } else {
-        throw AlienException("unexpected basic type");
+        throw AlienFatalError("unexpected basic type");
     }
 
     return ans;
@@ -152,7 +152,7 @@ alien_value* alien_value_basic::from_ptr(const alien_type* type, lua_State* L, v
             case 8:
                 *static_cast<int64_t*>(ans->ptr()) = *static_cast<int64_t*>(ptr); break;
             default:
-                luaL_error(L, "alien: unexpected integer size");
+                throw AlienFatalError("unexpected signed integer size");
         }
     } else if (type->is_integer()) {
         switch (type->__sizeof()) {
@@ -165,7 +165,7 @@ alien_value* alien_value_basic::from_ptr(const alien_type* type, lua_State* L, v
             case 8:
                 *static_cast<uint64_t*>(ans->ptr()) = *static_cast<uint64_t*>(ptr); break;
             default:
-                luaL_error(L, "alien: unexpected integer size");
+                throw AlienFatalError("unexpected integer size");
         }
     } else if (type->is_float()) {
         *static_cast<float*>(ans->ptr()) = *static_cast<float*>(ptr);
@@ -174,7 +174,7 @@ alien_value* alien_value_basic::from_ptr(const alien_type* type, lua_State* L, v
     } else if (type->is_rawpointer()) {
         *static_cast<void**>(ans->ptr()) = *static_cast<void**>(ptr);
     } else {
-        luaL_error(L, "alien: unexpected basic type");
+        throw AlienFatalError("unexpected basic type");
     }
 
     return ans;
@@ -205,13 +205,13 @@ alien_value_basic* alien_value_basic::checkvalue(const alien_type* type, lua_Sta
     if (alien_isbasic(L, idx)) {
         auto val = alien_checkbasic(L, idx);
         if (type && val->alientype() != type)
-            throw AlienException("basic type mismatch");
+            throw AlienInvalidValueException("basic type mismatch");
         return dynamic_cast<alien_value_basic*>(val->copy());
     }
 
     assert(type->is_basic());
     if (!lua_isnumber(L, idx)) {
-        luaL_error(L, "alien: expect number");
+        throw AlienInvalidValueException("expect number");
         return nullptr;
     }
 
@@ -220,8 +220,8 @@ alien_value_basic* alien_value_basic::checkvalue(const alien_type* type, lua_Sta
     return ans;
 }
 
-static int alien_value_basic_gc(lua_State* L);
-static int alien_value_basic_tostring(lua_State* L);
+ALIEN_LUA_FUNC static int alien_value_basic_gc(lua_State* L);
+ALIEN_LUA_FUNC static int alien_value_basic_tostring(lua_State* L);
 int alien_value_basic_init(lua_State* L) {
     luaL_newmetatable(L, ALIEN_VALUE_BASIC_META);
 
@@ -235,17 +235,21 @@ int alien_value_basic_init(lua_State* L) {
     return 0;
 }
 
-static int alien_value_basic_gc(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_value_basic_gc(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     auto v = alien_checkbasic(L, 1);
     delete v;
     return 0;
+    ALIEN_EXCEPTION_END();
 }
 
-static int alien_value_basic_tostring(lua_State* L) {
+ALIEN_LUA_FUNC static int alien_value_basic_tostring(lua_State* L) {
+    ALIEN_EXCEPTION_BEGIN();
     auto v = alien_checkbasic(L, 1);
     v->to_lua(L);
     lua_tostring(L, -1);
     return 1;
+    ALIEN_EXCEPTION_END();
 }
 
 int alien_value_basic_new(lua_State* L) {
