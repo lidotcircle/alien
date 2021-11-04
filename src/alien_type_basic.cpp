@@ -1,7 +1,9 @@
 #include "alien_type_basic.h"
 #include "alien_value_basic.h"
+#include "alien_exception.h"
 #include <ffi.h>
 #include <set>
+#include <memory>
 
 #define MAX_ab(a, b) ((a) > (b) ? (a) : (b))
 
@@ -10,6 +12,15 @@ alien_type_basic::alien_type_basic(const std::string& t, ffi_abi abi, ffi_type* 
     alien_type(t), abi(abi), pffi_type(type) {}
 
 ffi_type* alien_type_basic::ffitype() { return this->pffi_type; }
+
+int alien_type_basic::box(lua_State* L, int idx) const {
+    std::unique_ptr<alien_value_basic> v(dynamic_cast<alien_value_basic*>(this->from_lua(L, idx)));
+    if (v == nullptr)
+        throw AlienException("can't get a basic value");
+
+    v->just_box(L);
+    return 1;
+}
 
 static const std::set<ffi_type*> integer_types = {
     &ffi_type_uint8,  &ffi_type_sint8,

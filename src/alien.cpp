@@ -65,6 +65,10 @@ extern "C" __EXPORT int luaopen_alien_c(lua_State *L) {
     alien_push_type_table(L);
     lua_setfield(L, -2, "types");
 
+    // default library
+    alien_library__get_default_library(L);
+    lua_setfield(L, -2, "default");
+
     assert(lua_istable(L, -1));
     return 1;
 }

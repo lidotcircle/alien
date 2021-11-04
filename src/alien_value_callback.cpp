@@ -81,8 +81,11 @@ int alien_value_callback_new__(lua_State* L) {
     ffi_abi abi = FFI_DEFAULT_ABI;
     alien_type* rettype = nullptr;
     vector<alien_type*> params;
+    bool variadic = false;
 
-    std::tie(abi, rettype, params) = alien_function__parse_types_table(L, 2);
+    std::tie(abi, rettype, params, variadic) = alien_function__parse_types_table(L, 2);
+    if (variadic)
+        return luaL_error(L, "alien: callback desn't support variadic parameters");
 
     auto cbtype = alien_type_byname(L, "callback");
     alien_value_callback cb(cbtype, L, 1, abi, rettype, params);

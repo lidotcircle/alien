@@ -160,3 +160,69 @@ int alien_value_copy(lua_State* L) {
     return 1;
 }
 
+alien_value* alien_generic_from_lua(lua_State* L, int idx) {
+    auto type = lua_type(L, idx);
+    auto str_type = alien_type_byname(L, "string");
+    auto rawptr_t = alien_type_byname(L, "rawpointer");
+    switch (type) {
+        case LUA_TNIL:
+        {
+            lua_pushnumber(L, 0);
+            auto ans = rawptr_t->from_lua(L, -1);
+            lua_remove(L, -1);
+            return ans; 
+        }
+        case LUA_TSTRING:
+            return str_type->from_lua(L, idx);
+        case LUA_TLIGHTUSERDATA:
+            return rawptr_t->from_lua(L, -1);
+        case LUA_TNONE:
+            luaL_error(L, "alien: can't checkvalue with none type"); break;
+        case LUA_TBOOLEAN:
+            luaL_error(L, "alien: can't checkvalue with boolean type"); break;
+        case LUA_TNUMBER:
+            luaL_error(L, "alien: can't checkvalue with number type"); break;
+        case LUA_TFUNCTION:
+            luaL_error(L, "alien: can't checkvalue with function type"); break;
+        case LUA_TTHREAD:
+            luaL_error(L, "alien: can't checkvalue with thread type"); break;
+        case LUA_TTABLE:
+            luaL_error(L, "alien: can't checkvalue with table type"); break;
+        case LUA_TUSERDATA:
+            break;
+    }
+
+    auto empty_delete = [](alien_value*) {};
+    shared_ptr<alien_value> val;
+    if (alien_value_buffer::is_this_value(nullptr, L, idx))
+        val = shared_ptr<alien_value>(
+                alien_value_buffer::checkvalue(nullptr, L, idx),
+                empty_delete);
+    else if (alien_value_pointer::is_this_value(nullptr, L, idx))
+        val = shared_ptr<alien_value>(
+                alien_value_pointer::checkvalue(nullptr, L, idx),
+                empty_delete);
+    else if (alien_value_ref::is_this_value(nullptr, L, idx))
+        val = shared_ptr<alien_value>(
+                alien_value_ref::checkvalue(nullptr, L, idx),
+                empty_delete);
+    else if (alien_value_struct::is_this_value(nullptr, L, idx))
+        val = shared_ptr<alien_value>(
+                alien_value_struct::checkvalue(nullptr, L, idx),
+                empty_delete);
+    else if (alien_value_union::is_this_value(nullptr, L, idx))
+        val = shared_ptr<alien_value>(
+                alien_value_union::checkvalue(nullptr, L, idx),
+                empty_delete);
+    else if (alien_value_basic::is_this_value(nullptr, L, idx))
+        val = shared_ptr<alien_value>(
+                alien_value_basic::checkvalue(nullptr, L, idx),
+                std::default_delete<alien_value>());
+
+    if (val == nullptr) {
+        luaL_error(L, "alien: can't get alien value");
+        return nullptr;
+    }
+    return val->copy();
+}
+

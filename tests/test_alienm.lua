@@ -18,6 +18,18 @@ end)
 assert(t == false)
 assert(type(e) == "string")
 
+if alien.platform == "linux" then
+    local printf = alien.default.printf
+    assert(type(printf) == "userdata")
+    for k,v in pairs(alien.default) do
+        assert(type(k) == "string")
+        assert(type(v) == "userdata")
+    end
+
+    printf:types{ret = alien.types.int, is_variadic = true, alien.types.string}
+    printf("hello world %s 0x%x\n", "nope", alien.types.rawpointer:box(10000000))
+end
+
 for n,f in pairs(testl) do
     assert(type(n) == "string")
     assert(type(f) == "userdata")
@@ -155,6 +167,9 @@ assert(type(inta100) == "userdata")
 local avv1 = inta100:new()
 avv1[1] = 1
 assert(avv1[1] == 1)
+alien.alias("intx", "int")
+local intxa100 = alien.atype("intx[100]")
+assert(type(intxa100) == "userdata")
 
 -- callback
 local cb1 = alien.callback(function(a, b) return a * b end, {

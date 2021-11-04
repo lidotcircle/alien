@@ -141,9 +141,10 @@ static int alien_function_types(lua_State* L) {
     ffi_abi abi = FFI_DEFAULT_ABI;
     alien_type* ret = nullptr;
     vector<alien_type*> params;
-    std::tie(abi, ret, params) = alien_function__parse_types_table(L, 2);
+    bool is_variadic = false;
+    std::tie(abi, ret, params, is_variadic) = alien_function__parse_types_table(L, 2);
 
-    if (!af->define_types(abi, ret, params)) {
+    if (!af->define_types(abi, ret, params, is_variadic)) {
         return luaL_error(L, "alien: define function type failed");
     }
     return 0;
@@ -202,7 +203,7 @@ int alien_function__make_function(lua_State *L, alien_Library* lib, void *fn, co
     return 1;
 }
 
-std::tuple<ffi_abi,alien_type*,std::vector<alien_type*>>
+std::tuple<ffi_abi,alien_type*,std::vector<alien_type*>,bool>
     alien_function__parse_types_table(lua_State *L, int idx) 
 {
     alien_type* ret = nullptr;
@@ -210,8 +211,13 @@ std::tuple<ffi_abi,alien_type*,std::vector<alien_type*>>
 
     if (!lua_istable(L, idx)) {
         luaL_error(L, "alien: bad type definition");
-        return std::make_tuple(FFI_DEFAULT_ABI, ret, params);
+        return std::make_tuple(FFI_DEFAULT_ABI, ret, params,false);
     }
+
+    bool is_variadic = false;
+    lua_getfield(L, idx, "is_variadic");
+    if (lua_isboolean(L, -1))
+        is_variadic = lua_toboolean(L, -1);
 
     ffi_abi abi = FFI_DEFAULT_ABI;
     lua_getfield(L, idx, "abi");
@@ -221,10 +227,10 @@ std::tuple<ffi_abi,alien_type*,std::vector<alien_type*>>
     lua_getfield(L, idx, "ret");
     if (lua_isnil(L, -1)) {
         luaL_error(L, "alien: return type should be specified");
-        return std::make_tuple(FFI_DEFAULT_ABI, ret, params);
+        return std::make_tuple(FFI_DEFAULT_ABI, ret, params,false);
     }
     ret = alien_checktype(L, -1);
-    lua_pop(L, 2);
+    lua_pop(L, 3);
 
     size_t nparams = luaL_len(L, idx);
     for(size_t i=1;i<=nparams;i++) {
@@ -236,7 +242,7 @@ std::tuple<ffi_abi,alien_type*,std::vector<alien_type*>>
         lua_pop(L, 1);
     }
 
-    return std::make_tuple(abi, ret, params);
+    return std::make_tuple(abi, ret, params, is_variadic);
 }
 
 int alien_function_new(lua_State *L) {
@@ -258,15 +264,17 @@ int alien_function_new(lua_State *L) {
 }
 
 alien_Function::alien_Function(alien_Library* lib, void* fn, const string& name):
-    lib(lib), name(name), L(lib->get_lua_State()), fn(fn) ,
+    lib(lib), name(name), L(lib->get_lua_State()), fn(fn),
     ret_type(nullptr), params(), ffi_params(nullptr),
-    hookhandle(nullptr), trampoline_ref(LUA_NOREF), keepalive_ref(LUA_NOREF)
+    hookhandle(nullptr), trampoline_ref(LUA_NOREF), keepalive_ref(LUA_NOREF),
+    is_variadic(false)
 {
     alien_type* void_t = alien_type_byname(L, "void");
-    this->define_types(FFI_DEFAULT_ABI, void_t, vector<alien_type*>());
+    this->define_types(FFI_DEFAULT_ABI, void_t, vector<alien_type*>(), false);
 }
 
-bool alien_Function::define_types(ffi_abi abi, alien_type* ret, const vector<alien_type*>& params) {
+bool alien_Function::define_types(ffi_abi abi, alien_type* ret, const vector<alien_type*>& params, bool is_variadic) {
+    this->is_variadic = is_variadic;
     this->params = params;
     this->ret_type = ret;
 
@@ -284,28 +292,49 @@ bool alien_Function::define_types(ffi_abi abi, alien_type* ret, const vector<ali
 
 int alien_Function::call_from_lua(lua_State *L) {
     assert(this->lib->get_lua_State() == L);
-    int iret; double dret; void *pret; long lret; unsigned long ulret; float fret;
-    int i, nrefi = 0, nrefui = 0, nrefd = 0, nrefc = 0;
 
     unique_ptr<void*[]> args;
     int nargs = lua_gettop(L) - 1;
-    if (nargs != this->params.size())
+    if (nargs < this->params.size() || (!this->is_variadic && nargs > this->params.size()))
         return luaL_error(L, "alien: too %s arguments (function %s), expect %d but get %d",
                           nargs < this->params.size() ? "few" : "many",
                           this->name.c_str(), this->params.size(), nargs);
-    if(nargs > 0) args = make_unique<void*[]>(nargs);
+    if (nargs > 0) args = make_unique<void*[]>(nargs);
     vector<std::unique_ptr<alien_value>> values;
-    for(i = 0; i < nargs; i++) {
+    int i = 0;
+    for (; i < this->params.size(); i++) {
         alien_value* val = this->params[i]->from_lua(L, i + 2);
         args[i] = val->ptr();
         values.push_back(std::unique_ptr<alien_value>(val));
     }
+    for (; i < nargs; i++) {
+        alien_value* val = alien_generic_from_lua(L, i + 2);
+        args[i] = val->ptr();
+        values.push_back(std::unique_ptr<alien_value>(val));
+    }
     std::unique_ptr<alien_value> ret(this->ret_type->new_value(L));
-    ffi_call(&this->cif, reinterpret_cast<void(*)()>(this->fn), ret->ptr(), args.get());
+
+    ffi_cif var_cif;
+    std::unique_ptr<ffi_type*[]> ffi_params;
+    ffi_cif* cif = &this->cif;
+    if (this->is_variadic) {
+        ffi_params = std::make_unique<ffi_type*[]>(nargs);
+        int k = 0;
+        for (;k<this->params.size();k++)
+            ffi_params[k] = this->ffi_params[k];
+        for (;k<nargs;k++)
+            ffi_params[k] = const_cast<ffi_type*>(values[k]->alientype()->ffitype());
+
+        ffi_prep_cif_var(&var_cif, this->cif.abi, this->cif.nargs, nargs,
+                         this->cif.rtype, ffi_params.get());
+        cif = &var_cif;
+    }
+
+    ffi_call(cif, reinterpret_cast<void(*)()>(this->fn), ret->ptr(), args.get());
     ret->to_lua(L);
 
     int nref = 0;
-    for (size_t i=0;i<values.size();i++) {
+    for (size_t i=0;i<params.size();i++) {
         auto vt = this->params[i];
 
         if (vt->is_ref() && vt->is_basic()) {
@@ -335,7 +364,7 @@ int alien_Function::hook(lua_State* L, void* jmpto, int objref) {
     int n = alien_function__make_function(L, this->lib, fn, "trampoline#" + this->name);
     assert(n == 1);
     alien_Function* trampoline_func = alien_checkfunction(L, -1);
-    trampoline_func->define_types(this->cif.abi, this->ret_type, this->params);
+    trampoline_func->define_types(this->cif.abi, this->ret_type, this->params, this->is_variadic);
 
     lua_pushvalue(L, -1);
     this->hookhandle = hook;

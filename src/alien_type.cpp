@@ -11,6 +11,7 @@
 #include "alien_value.h"
 #include "alien_function.h"
 #include "alien_lua_util.h"
+#include "alien_exception.h"
 #include <ctype.h>
 #include <assert.h>
 #include <vector>
@@ -45,19 +46,20 @@ using namespace std;
 #endif
 
 #define basic_type_map \
-    MENTRY( void,      ffi_type_void      ) \
-    MENTRY( uint8_t,   ffi_type_uint8     ) \
-    MENTRY( int8_t,    ffi_type_sint8     ) \
-    MENTRY( uint16_t,  ffi_type_uint16    ) \
-    MENTRY( int16_t,   ffi_type_sint16    ) \
-    MENTRY( uint32_t,  ffi_type_uint32    ) \
-    MENTRY( int32_t,   ffi_type_sint32    ) \
-    MENTRY( uint64_t,  ffi_type_uint64    ) \
-    MENTRY( int64_t,   ffi_type_sint64    ) \
-    MENTRY( size_t,    ffi_type_size_t    ) \
-    MENTRY( ptrdiff_t, ffi_type_ptrdiff_t ) \
-    MENTRY( float,     ffi_type_float     ) \
-    MENTRY( double,    ffi_type_double    )
+    MENTRY( void,       ffi_type_void      ) \
+    MENTRY( uint8_t,    ffi_type_uint8     ) \
+    MENTRY( int8_t,     ffi_type_sint8     ) \
+    MENTRY( uint16_t,   ffi_type_uint16    ) \
+    MENTRY( int16_t,    ffi_type_sint16    ) \
+    MENTRY( uint32_t,   ffi_type_uint32    ) \
+    MENTRY( int32_t,    ffi_type_sint32    ) \
+    MENTRY( uint64_t,   ffi_type_uint64    ) \
+    MENTRY( int64_t,    ffi_type_sint64    ) \
+    MENTRY( size_t,     ffi_type_size_t    ) \
+    MENTRY( ptrdiff_t,  ffi_type_ptrdiff_t ) \
+    MENTRY( float,      ffi_type_float     ) \
+    MENTRY( double,     ffi_type_double    ) \
+    MENTRY( rawpointer, ffi_type_pointer   )
 
 #define type_alias_map \
     MENTRY( char,     int8_t   ) \
@@ -234,13 +236,15 @@ int alien_types_init(lua_State* L) {
 static int alien_types_new(lua_State* L);
 static int alien_types_value_is(lua_State* L);
 static int alien_types_sizeof(lua_State* L);
+static int alien_types_box(lua_State* L);
 static int alien_types_ptr(lua_State* L);
 static int alien_types_ref(lua_State* L);
 
 const map<string, lua_CFunction> alien_types_methods = {
-    {"new", alien_types_new},
+    {"new",      alien_types_new},
     {"value_is", alien_types_value_is},
-    {"sizeof", alien_types_sizeof},
+    {"sizeof",   alien_types_sizeof},
+    {"box",      alien_types_box},
 };
 const map<string, lua_CFunction> alien_types_properties = {
     {"ptr", alien_types_ptr},
@@ -285,6 +289,17 @@ static int alien_types_gc(lua_State* L) {
     alien_type* type = alien_checktype(L, 1);
     delete type;
     return 0;
+}
+static int alien_types_box(lua_State* L) {
+    alien_type_basic* type = dynamic_cast<alien_type_basic*>(alien_checktype(L, 1));
+    if (!type || !type->is_basic())
+        return luaL_error(L, "alien: cannot box non-basic type");
+    if (lua_gettop(L) != 2)
+        return luaL_error(L, "alien: box() takes exactly 2 arguments");
+
+    int n = type->box(L, 2);
+    assert(n == 1);
+    return 1;
 }
 static int alien_types_tostring(lua_State* L) {
     alien_type* type = alien_checktype(L, 1);

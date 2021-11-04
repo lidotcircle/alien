@@ -96,6 +96,7 @@ alien_Library::alien_Library(lua_State* L, const string& libname, void* libhandl
     this->init_func_list = false;
 }
 
+#include <iostream>
 const set<string>& alien_Library::function_list() {
     while (!this->init_func_list) {
         struct function_list* functions = lf_load(this->lib);
@@ -187,6 +188,8 @@ int alien_library_init(lua_State* L) {
     alien_Library** pal = (alien_Library **)lua_newuserdata(L, sizeof(alien_Library*));
     *pal = al;
     luaL_setmetatable(L, ALIEN_LIBRARY_META);
+    lua_newtable(L);
+    lua_setuservalue(L, -2);
 
     alien_push_alien(L);
     lua_pushliteral(L, ALIEN_LIBRARY_DEFAULT_LIB_GN);

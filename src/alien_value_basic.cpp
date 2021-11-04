@@ -1,9 +1,22 @@
 #include "alien_type.h"
 #include "alien_value_basic.h"
+#include "alien_exception.h"
 #include <memory>
 #include <assert.h>
 #include <string.h>
+using namespace std;
 
+#define ALIEN_VALUE_BASIC_META "alien_value_basic_meta"
+
+static bool alien_isbasic(lua_State* L, int idx) {
+    return luaL_testudata(L, idx, ALIEN_VALUE_BASIC_META) != nullptr;
+}
+static alien_value_basic* alien_checkbasic(lua_State* L, int idx) {
+    alien_value** v = static_cast<alien_value**>(luaL_checkudata(L, idx, ALIEN_VALUE_BASIC_META));
+    auto rv = dynamic_cast<alien_value_basic*>(*v);
+    assert(rv != nullptr);
+    return rv;
+}
 
 alien_value_basic::alien_value_basic(const alien_type* type): alien_value(type) {}
 alien_value_basic::alien_value_basic(const alien_type* type, std::shared_ptr<char> mem, void* ptr): alien_value(type, mem, ptr) {}
@@ -48,6 +61,14 @@ void alien_value_basic::to_lua(lua_State* L) const {
     }
 }
 
+void alien_value_basic::just_box(lua_State* L) const {
+    auto value = this->copy();
+
+    alien_value** ud = static_cast<alien_value**>(lua_newuserdata(L, sizeof(alien_value*)));
+    *ud = value;
+    luaL_setmetatable(L, ALIEN_VALUE_BASIC_META);
+}
+
 alien_value* alien_value_basic::copy() const {
     auto ans = new alien_value_basic(this->type);
     memcpy(ans->ptr(), const_cast<void*>(this->ptr()), this->__sizeof());
@@ -57,15 +78,26 @@ alien_value* alien_value_basic::copy() const {
 
 /** static */
 alien_value* alien_value_basic::from_lua(const alien_type* type, lua_State* L, int idx) {
-    if (!lua_isnumber(L, idx)) {
-        luaL_error(L, "alien: expect number");
-        return nullptr;
+    if (alien_isbasic(L, idx)) {
+        auto ans = alien_checkbasic(L, idx)->copy();
+        if (ans->alientype() != type)
+            throw AlienException("basic type mismatch");
+        return ans;
     }
 
-    long long ival = lua_tointeger(L, idx);
-    double fval = lua_tonumber(L, idx);
-    auto ans = new alien_value_basic(type);
+    long long ival;
+    double fval;
+    if (lua_isnumber(L, idx)) {
+        ival = lua_tointeger(L, idx);
+        fval = lua_tonumber(L, idx);
+    } else if (type->is_rawpointer() && lua_islightuserdata(L, idx)) {
+        ival = reinterpret_cast<long long>(lua_touserdata(L, idx));
+    } else {
+        throw AlienException("bad basic type, require a lua number "
+                             "or light userdata for rawpointer type");
+    }
 
+    auto ans = new alien_value_basic(type);
     if (type->is_signed()) {
         switch (type->__sizeof()) {
             case 1:
@@ -77,7 +109,7 @@ alien_value* alien_value_basic::from_lua(const alien_type* type, lua_State* L, i
             case 8:
                 *static_cast<int64_t*>(ans->ptr()) = ival; break;
             default:
-                luaL_error(L, "alien: unexpected integer size");
+                throw AlienException("unexpected signed integer size");
         }
     } else if (type->is_integer()) {
         switch (type->__sizeof()) {
@@ -90,7 +122,7 @@ alien_value* alien_value_basic::from_lua(const alien_type* type, lua_State* L, i
             case 8:
                 *static_cast<uint64_t*>(ans->ptr()) = ival; break;
             default:
-                luaL_error(L, "alien: unexpected integer size");
+                throw AlienException("unexpected integer size");
         }
     } else if (type->is_float()) {
         *static_cast<float*>(ans->ptr()) = fval;
@@ -99,7 +131,7 @@ alien_value* alien_value_basic::from_lua(const alien_type* type, lua_State* L, i
     } else if (type->is_rawpointer()) {
         *static_cast<void**>(ans->ptr()) = reinterpret_cast<void*>(ival);
     } else {
-        luaL_error(L, "alien: unexpected basic type");
+        throw AlienException("unexpected basic type");
     }
 
     return ans;
@@ -159,12 +191,24 @@ alien_value* alien_value_basic::new_value(const alien_type* type, lua_State* L) 
 
 /** static */
 bool alien_value_basic::is_this_value(const alien_type* type, lua_State* L, int idx) {
+    if (alien_isbasic(L, idx)) {
+        auto val = alien_checkbasic(L, idx);
+        return !type || val->alientype() == type;
+    }
+
     assert(type->is_basic());
     return lua_isnumber(L, idx);
 }
 
 /** static */
 alien_value_basic* alien_value_basic::checkvalue(const alien_type* type, lua_State* L, int idx) {
+    if (alien_isbasic(L, idx)) {
+        auto val = alien_checkbasic(L, idx);
+        if (type && val->alientype() != type)
+            throw AlienException("basic type mismatch");
+        return dynamic_cast<alien_value_basic*>(val->copy());
+    }
+
     assert(type->is_basic());
     if (!lua_isnumber(L, idx)) {
         luaL_error(L, "alien: expect number");
@@ -176,9 +220,32 @@ alien_value_basic* alien_value_basic::checkvalue(const alien_type* type, lua_Sta
     return ans;
 }
 
-
+static int alien_value_basic_gc(lua_State* L);
+static int alien_value_basic_tostring(lua_State* L);
 int alien_value_basic_init(lua_State* L) {
+    luaL_newmetatable(L, ALIEN_VALUE_BASIC_META);
+
+    lua_pushcfunction(L, alien_value_basic_gc);
+    lua_setfield(L, -2, "__gc");
+
+    lua_pushcfunction(L, alien_value_basic_tostring);
+    lua_setfield(L, -2, "__tostring");
+
+    lua_pop(L, 1);
     return 0;
+}
+
+static int alien_value_basic_gc(lua_State* L) {
+    auto v = alien_checkbasic(L, 1);
+    delete v;
+    return 0;
+}
+
+static int alien_value_basic_tostring(lua_State* L) {
+    auto v = alien_checkbasic(L, 1);
+    v->to_lua(L);
+    lua_tostring(L, -1);
+    return 1;
 }
 
 int alien_value_basic_new(lua_State* L) {

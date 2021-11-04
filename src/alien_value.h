@@ -45,5 +45,6 @@ class alien_value {
 
 int alien_value_init(lua_State* L);
 int alien_value_copy(lua_State* L);
+alien_value* alien_generic_from_lua(lua_State* L, int idx);
 
 #endif // _ALIEN_VALUE_H_

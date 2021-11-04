@@ -23,6 +23,8 @@ class alien_type_basic: public alien_type {
                                       void* ptr) const override;
         virtual alien_value* new_value(lua_State* L) const override;
 
+        int box(lua_State* L, int idx) const;
+
         virtual bool is_integer()    const override;
         virtual bool is_signed()     const override;
         virtual bool is_float()      const override;

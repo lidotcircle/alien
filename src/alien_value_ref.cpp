@@ -211,7 +211,6 @@ alien_value* alien_value_ref::new_value(const alien_type* type, lua_State* L) {
 
 /** static */
 bool alien_value_ref::is_this_value(const alien_type* type, lua_State* L, int idx) {
-    assert(type->is_ref());
     return alien_isref(L, idx);
 }
 

@@ -11,6 +11,7 @@ class alien_value_basic: public alien_value {
         alien_value_basic(const alien_type* type, std::shared_ptr<char> mem, void* ptr);
 
         virtual void to_lua(lua_State* L) const override;
+        void just_box(lua_State* L) const;
         virtual alien_value* copy() const override;
 
         static alien_value* from_lua(const alien_type* type, lua_State* L, int idx);
