@@ -5,6 +5,7 @@
 #include <string>
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 #ifdef __GNUC__
 #define printf_check(fmt, vara) __attribute__((format(printf, fmt, vara)))
@@ -57,6 +58,7 @@ alien_exception_list
 #undef MENTRY
 
 
+extern char alien_exception_buffer[4096];
 #define ALIEN_EXCEPTION_BEGIN() \
     try {
 #define ALIEN_EXCEPTION_END() \
@@ -64,7 +66,8 @@ alien_exception_list
         auto n = dynamic_cast<AlienFatalError*>(&e); \
         if (n != nullptr) \
             throw e; \
-        return luaL_error(L, e.what()); \
-    }
+        strncpy(alien_exception_buffer, e.what(), sizeof(alien_exception_buffer)); \
+    } \
+    return luaL_error(L, alien_exception_buffer);
 
 #endif // _ALIEN_EXCEPTION_H_
