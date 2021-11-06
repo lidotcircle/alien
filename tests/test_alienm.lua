@@ -28,6 +28,9 @@ if alien.platform == "linux" then
 
     printf:types{ret = alien.types.int, is_variadic = true, alien.types.string}
     printf("hello world %s 0x%x\n", "nope", alien.types.rawpointer:box(10000000))
+    local t2, e2 = pcall(function() printf() end)
+    assert(t2 == false)
+    assert(type(e2) == "string")
 end
 
 for n,f in pairs(testl) do
