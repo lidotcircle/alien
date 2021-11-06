@@ -2,14 +2,12 @@
 #include "alien_value_callback.h"
 #include <stdexcept>
 
-static ffi_type ffi_callback = ffi_type_pointer;
-
 
 alien_type_callback::alien_type_callback():
     alien_type("callback") {}
 
 ffi_type* alien_type_callback::ffitype() {
-    return &ffi_callback;
+    return nullptr;
 }
 
 alien_value* alien_type_callback::from_lua(lua_State* L, int idx) const {

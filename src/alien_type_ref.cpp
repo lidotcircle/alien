@@ -2,14 +2,12 @@
 #include "alien_value_ref.h"
 #include <ffi.h>
 
-static ffi_type ffi_type_ref = ffi_type_pointer;
-
 
 alien_type_ref::alien_type_ref(alien_type* reftype):
     alien_type(reftype->__typename() + "&"), _ref_type(reftype) {}
 
 ffi_type* alien_type_ref::ffitype() {
-   return &ffi_type_ref;
+    return nullptr;
 }
 
 alien_value* alien_type_ref::from_lua(lua_State* L, int idx) const {

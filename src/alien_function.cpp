@@ -13,37 +13,13 @@
 using namespace std;
 
 
-#if defined(X86_WIN32)
-const ffi_abi ffi_abis[] = { FFI_SYSV, FFI_STDCALL, FFI_THISCALL, FFI_FASTCALL, FFI_MS_CDECL, FFI_PASCAL, FFI_REGISTER, FFI_DEFAULT_ABI };
-const char *const ffi_abi_names[] = { "sysv", "stdcall", "thiscall", "fastcall", "cdecl", "pascal", "register", "default", NULL };
-#elif defined(X86_WIN64)
-const ffi_abi ffi_abis[] = { FFI_WIN64, FFI_GNUW64, FFI_DEFAULT_ABI };
-const char *const ffi_abi_names[] = { "win64", "gnuw64", "default", NULL };
-#elif defined(X86_64) || (defined (__x86_64__) && defined (X86_DARWIN))
-const ffi_abi ffi_abis[] = { FFI_UNIX64, FFI_WIN64, FFI_EFI64, FFI_GNUW64, FFI_DEFAULT_ABI };
-const char *const ffi_abi_names[] = { "unix64", "win64", "efi64", "gnuw64", "default", NULL };
-#else
-const ffi_abi ffi_abis[] = { FFI_SYSV, FFI_THISCALL, FFI_FASTCALL, FFI_STDCALL, FFI_PASCAL, FFI_REGISTER, FFI_MS_CDECL, FFI_DEFAULT_ABI };
-const char *const ffi_abi_names[] = { "sysv", "thiscall", "fastcall", "stdcall", "pascal", "register", "cdecl", "default", NULL };
-#endif
-
 ffi_abi alien_checkabi(lua_State* L, int idx) {
     if (!lua_isstring(L, idx))
         throw AlienInvalidArgumentException("abi should be specified as string");
 
     string na(lua_tostring(L, idx));
     bool found = false;
-    for (size_t i=0;ffi_abi_names[i];i++) {
-        if (na == string(ffi_abi_names[i])) {
-            found = true;
-            break;
-        }
-    }
-    if (!found)
-        throw AlienNotImplementedException("unsupported abi '%s' in current platform", na.c_str());
-
-    ffi_abi abi = ffi_abis[luaL_checkoption(L, idx, "default", ffi_abi_names)];
-    return abi;
+    return FFI_DEFAULT_ABI;
 }
 
 #define ALIEN_FUNCTION_META "alien_function_meta"
@@ -88,36 +64,8 @@ int alien_function_init(lua_State *L) {
     return 0;
 }
 
-static map<string, lua_CFunction> function_methods = {
-    { "types",  alien_function_types },
-    { "hook",   alien_function_hook },
-    { "unhook", alien_function_unhook },
-};
-static map<string, lua_CFunction> function_properties = {
-    { "addr",       alien_function_addr },
-    { "trampoline", alien_function_trampoline },
-};
 ALIEN_LUA_FUNC static int alien_function__index(lua_State* L) {
     ALIEN_EXCEPTION_BEGIN();
-    const string method = luaL_checkstring(L, 2);
-    auto fn = function_methods.find(method);
-    if (fn != function_methods.end()) {
-        lua_pushcfunction(L, fn->second);
-        return 1;
-    }
-
-    fn = function_properties.find(method);
-    if (fn != function_properties.end()) {
-        lua_pushcfunction(L, fn->second);
-        lua_pushvalue(L, 1);
-        if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
-            const char* erro = lua_tostring(L, -1);
-            throw AlienLuaThrow("%s", erro);
-        }
-        return 1;
-    }
-
-    throw AlienNotImplementedException("method / properties %s not found in alien_function", method.c_str());
     ALIEN_EXCEPTION_END();
 }
 

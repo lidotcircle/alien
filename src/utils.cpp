@@ -43,67 +43,10 @@ function_list* lf_load(const void* vlib)
     return fl;
 }
 #elif defined(linux)
-#ifndef _GNU_SOURCE
-# define _GNU_SOURCE
-#endif
-#include <link.h>
-#include <dlfcn.h>
 
 function_list* lf_load(const void* lib)
-{
-    struct link_map* mlib = (struct link_map*)lib;
-    if (lib == NULL)
-        mlib = static_cast<link_map*>(dlopen(NULL, RTLD_NOW));
+{return nullptr;}
 
-    ElfW(Sym)* symtab = NULL;
-    char* strtab = NULL;
-    int symentries = 0;
-    for (ElfW(Dyn)* section = mlib->l_ld; section->d_tag != DT_NULL; ++section)
-    {
-        if (section->d_tag == DT_SYMTAB)
-            symtab = (ElfW(Sym)*)section->d_un.d_ptr;
-        if (section->d_tag == DT_STRTAB)
-            strtab = (char*)section->d_un.d_ptr;
-        if (section->d_tag == DT_SYMENT)
-            symentries = section->d_un.d_val;
-    }
-
-    size_t size = strtab - (char *)symtab;
-    size_t esize = 0;
-    for (size_t k = 0; k < size / symentries; ++k) {
-        if (ELF32_ST_TYPE(symtab[k].st_info) == STT_FUNC)
-            esize += 1;
-    }
-
-    function_list* fl = (function_list*)(malloc(sizeof(function_list)));
-    fl->n = esize;
-    fl->names = (char**)malloc(fl->n * sizeof(char*));
-    memset(fl->names, 0, fl->n * sizeof(char*));
-    size_t nt = 0;
-
-    for (size_t k = 0; k < size / symentries; ++k)
-    {
-        ElfW(Sym)* sym = &symtab[k];
-        // If sym is function
-        if (ELF32_ST_TYPE(symtab[k].st_info) == STT_FUNC)
-        {
-            //str is name of each symbol
-            const char* str = &strtab[sym->st_name];
-            size_t m = strlen(str);
-            char* mstr = (char*)malloc(m + 1);
-            memcpy(mstr, str, m);
-            mstr[m] = '\0';
-            fl->names[nt] = mstr;
-            nt++;
-        }
-    }
-
-    if (lib == NULL)
-        dlclose(mlib);
-
-    assert(nt == esize);
-    return fl;
-}
 #else
 function_list* lf_load(const void* lib)
 {

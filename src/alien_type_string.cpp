@@ -1,12 +1,10 @@
 #include "alien_type_string.h"
 #include "alien_value_string.h"
 
-ffi_type ffi_type_string = ffi_type_pointer;
-
 alien_type_string::alien_type_string(): alien_type("string") {}
 
 ffi_type* alien_type_string::ffitype() {
-    return &ffi_type_string;
+    return nullptr;
 }
 
 alien_value* alien_type_string::from_lua(lua_State* L, int idx) const {

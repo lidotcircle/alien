@@ -13,19 +13,6 @@
 #define ALIEN_LIBRARY_GLOBAL_REF "__alien__"
 
 static const luaL_Reg alienlib[] = {
-    {"load",         alien_load},
-    {"functionlist", alien_functionlist},
-    {"hasfunction",  alien_hasfunction},
-
-    {"funcptr",      alien_function_new},
-    {"callback",     alien_value_callback_new__},
-
-    {"copy", alien_value_copy},
-
-    {"defstruct",    alien_types_defstruct},
-    {"defunion",     alien_types_defunion},
-    {"alias",        alien_types_alias},
-    {"atype",        alien_types_getbyname},
     {NULL, NULL},
 };
 
@@ -33,43 +20,6 @@ extern "C" __EXPORT int luaopen_alien_c(lua_State *L) {
     /* Register main library */
     luaL_register(L, "alien", alienlib);
 
-    lua_pushvalue(L, -1);
-    lua_setglobal(L, ALIEN_LIBRARY_GLOBAL_REF);
-
-    // version
-    lua_pushliteral(L, MYVERSION);
-    lua_setfield(L, -2, "version");
-
-    // platform
-    lua_pushliteral(L, PLATFORM);
-    lua_setfield(L, -2, "platform");
-
-    auto n = lua_gettop(L);
-
-    alien_rotable_init (L);
-    assert(lua_gettop(L) == n);
-
-    alien_library_init (L);
-    assert(lua_gettop(L) == n);
-
-    alien_function_init(L);
-    assert(lua_gettop(L) == n);
-
-    alien_types_init(L);
-    assert(lua_gettop(L) == n);
-
-    alien_value_init(L);
-    assert(lua_gettop(L) == n);
-
-    // types
-    alien_push_type_table(L);
-    lua_setfield(L, -2, "types");
-
-    // default library
-    alien_library__get_default_library(L);
-    lua_setfield(L, -2, "default");
-
-    assert(lua_istable(L, -1));
     return 1;
 }
 

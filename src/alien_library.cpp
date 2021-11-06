@@ -11,28 +11,15 @@ using namespace std;
 
 #if defined(USE_DLOPEN)
 
-#ifndef RTLD_DEFAULT
-#define RTLD_DEFAULT 0
-#endif
-
-#include <dlfcn.h>
-
 static void alien_unload (void *lib) {
-    if(lib && (lib != RTLD_DEFAULT))
-        dlclose(lib);
 }
 
 static void *alien_openlib (lua_State *L, const char *libname) {
-    void *lib = dlopen(libname, RTLD_NOW);
-    if(lib == NULL) lua_pushstring(L, dlerror());
-    return lib;
+    return nullptr;
 }
 
 static void *alien_loadfunc (lua_State *L, void *lib, const char *sym) {
-    if(!lib) lib = RTLD_DEFAULT;
-    void *f = dlsym(lib, sym);
-    if (f == NULL) lua_pushstring(L, dlerror());
-    return f;
+    return nullptr;
 }
 
 #elif defined(WINDOWS)
@@ -97,7 +84,6 @@ alien_Library::alien_Library(lua_State* L, const string& libname, void* libhandl
     this->init_func_list = false;
 }
 
-#include <iostream>
 const set<string>& alien_Library::function_list() {
     while (!this->init_func_list) {
         struct function_list* functions = lf_load(this->lib);
@@ -116,27 +102,19 @@ const set<string>& alien_Library::function_list() {
 }
 
 bool alien_Library::has_function(const string& funcname) {
-    if (!this->init_func_list)
-        this->function_list();
-
-    for (auto& f: this->funclist) {
-        if (f == funcname)
-            return true;
-    }
-
     return false;
 }
 
 lua_State* alien_Library::get_lua_State() {
-    return this->L;
+    return nullptr;
 }
 
 void* alien_Library::loadfunc(const std::string& func) {
-    return alien_loadfunc(this->L, this->lib, func.c_str());
+    return nullptr;
 }
 
 std::string alien_Library::tostring() {
-    return "[alien library '" + this->name + "']";
+    return "";
 }
 
 const std::string& alien_Library::libname() {
@@ -144,14 +122,6 @@ const std::string& alien_Library::libname() {
 }
 
 alien_Library::~alien_Library() {
-    if (this->lib != nullptr) {
-        alien_unload(this->lib);
-        this->lib = nullptr;
-    }
-
-    this->L = nullptr;
-    this->funclist.clear();
-    this->init_func_list = false;
 }
 
 
