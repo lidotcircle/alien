@@ -12,23 +12,6 @@
 
 
 class alien_Function {
-    private:
-        alien_Library *lib;
-        std::string name;
-        lua_State* L;
-        bool is_variadic;
-
-        void *fn;
-        alien_type* ret_type;
-        std::vector<alien_type*> params;
-        ffi_cif cif;
-        std::unique_ptr<ffi_type*[]> ffi_params;
-
-        /* hook part */
-        void* hookhandle;
-        int   trampoline_ref;
-        int   keepalive_ref;
-
     public:
         alien_Function() = delete;
         alien_Function(const alien_Function&) = delete;
@@ -50,14 +33,5 @@ class alien_Function {
 
         ~alien_Function();
 };
-
-
-int alien_function_init(lua_State *L);
-
-int alien_function__make_function(lua_State *L, alien_Library* lib, void *fn, const std::string& name);
-ffi_abi alien_checkabi(lua_State* L, int idx);
-std::tuple<ffi_abi,alien_type*,std::vector<alien_type*>,bool> alien_function__parse_types_table(lua_State *L, int idx);
-
-ALIEN_LUA_FUNC int alien_function_new(lua_State *L);
 
 #endif // _ALIEN_FUNCTION_H_

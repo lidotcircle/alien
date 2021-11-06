@@ -35,39 +35,11 @@ set_target_properties(alien PROPERTIES
     PREFIX "")
 target_sources(alien PRIVATE
     src/alien.cpp
-    src/alien_dep_lua.cpp
-    src/alien_lua_util.cpp
-    src/alien_lua_check.cpp
-    src/alien_function.cpp
-    src/alien_library.cpp
-    src/alien_exception.cpp
-
-    src/alien_type.cpp
-    src/alien_type_basic.cpp
-    src/alien_type_buffer.cpp
-    src/alien_type_callback.cpp
-    src/alien_type_pointer.cpp
-    src/alien_type_ref.cpp
-    src/alien_type_string.cpp
-    src/alien_type_struct.cpp
-    src/alien_type_union.cpp
-    src/alien_type_array.cpp
-
-    src/alien_value.cpp
-    src/alien_value_basic.cpp
-    src/alien_value_buffer.cpp
-    src/alien_value_callback.cpp
-    src/alien_value_pointer.cpp
-    src/alien_value_ref.cpp
-    src/alien_value_string.cpp
-    src/alien_value_struct.cpp
-    src/alien_value_union.cpp
-    src/alien_value_array.cpp
-
-    src/utils.cpp
     )
 target_include_directories(alien PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(alien PRIVATE lua)
+target_compile_options(alien PRIVATE "-fvisibility=hidden")
+#target_link_options(alien PRIVATE "-fvisibility=hidden")
 link_libffi(alien)
 link_funchook(alien SHARED)
 
