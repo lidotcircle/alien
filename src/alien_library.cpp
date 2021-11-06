@@ -97,7 +97,6 @@ alien_Library::alien_Library(lua_State* L, const string& libname, void* libhandl
     this->init_func_list = false;
 }
 
-#include <iostream>
 const set<string>& alien_Library::function_list() {
     while (!this->init_func_list) {
         struct function_list* functions = lf_load(this->lib);

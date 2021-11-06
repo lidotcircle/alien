@@ -14,7 +14,7 @@
 #ifdef WINDOWS
 #define __EXPORT __declspec(dllexport)
 #else
-#define __EXPORT
+#define __EXPORT __attribute__((visibility("default")))
 #endif
 
 #ifdef WINDOWS

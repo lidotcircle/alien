@@ -68,6 +68,9 @@ target_sources(alien PRIVATE
     )
 target_include_directories(alien PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(alien PRIVATE lua)
+if (UNIX)
+    target_compile_options(alien PRIVATE "-fvisibility=hidden")
+endif()
 link_libffi(alien)
 link_funchook(alien SHARED)
 
